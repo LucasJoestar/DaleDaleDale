@@ -3,9 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PinataController : MonoBehaviour 
+public class PinataController : MonoBehaviour
 {
-	/* PinataController :
+    /* PinataController :
 	 *
 	 *	#####################
 	 *	###### PURPOSE ######
@@ -57,6 +57,16 @@ public class PinataController : MonoBehaviour
 	 *	### MODIFICATIONS ###
 	 *	#####################
 	 *
+     *	Date :			[30 / 01 / 2019]
+	 *	Author :		[Guibert Lucas]
+	 *
+	 *	Changes :
+     *	
+     *	    - Added the animator, rigidbody, grenades, selectedGrenade, isFacingRight, isOnGround, speed & jumpForce fields.
+     *	    - Added the Move, Jump, Strike, ThrowGrenade, Die & Flip methods.
+	 *
+	 *	-----------------------------------
+     * 
 	 *	Date :			[18 / 01 / 2019]
 	 *	Author :		[Guibert Lucas]
 	 *
@@ -69,22 +79,123 @@ public class PinataController : MonoBehaviour
 	 *	-----------------------------------
 	*/
 
-	#region Events
+    #region Events
 
-	#endregion
+    #endregion
 
-	#region Fields / Properties
+    #region Fields / Properties
+    /// <summary>
+    /// Animator of the player, used to play all its animations, like running, dying, etc...
+    /// </summary>
+    [SerializeField] private Animator animator = null;
 
-	#endregion
+    /// <summary>
+    /// Player rigidbody, used to give him velcity for jump, explosion recoil, etc...
+    /// </summary>
+    [SerializeField] private new Rigidbody2D rigidbody2D = null;
 
-	#region Methods
+    /// <summary>
+    /// All grenades the player is carrying on.
+    /// </summary>
+    [SerializeField]
+    private Dictionary<GrenadeType, int> grenades = new Dictionary<GrenadeType, int>()
+    {
+        { GrenadeType.Classic, 3 }, { GrenadeType.Bouncing, 0 }, { GrenadeType.Sticky, 0 }
+    };
 
-	#region Original Methods
+    /// <summary>
+    /// The actually grenade type selected by the player.
+    /// </summary>
+    [SerializeField] private GrenadeType selectedGrenade = GrenadeType.Classic;
 
-	#endregion
+    /// <summary>
+    /// If true, the player is facing the right side of the screen ; otherwise, facing the left one.
+    /// </summary>
+    [SerializeField] private bool isFacingRight = true;
 
-	#region Unity Methods
-	// Awake is called when the script instance is being loaded
+    /// <summary>
+    /// Indicates if the player is currently on ground, or in the air.
+    /// </summary>
+    [SerializeField] private bool isOnGround = false;
+
+    /// <summary>
+    /// Speed of the player movements.
+    /// </summary>
+    [SerializeField] private float speed = 1;
+
+    /// <summary>
+    /// Value used to add vertical velocity to the player when jumping.
+    /// </summary>
+    [SerializeField] private float jumpForce = 250;
+    #endregion
+
+    #region Methods
+
+    #region Original Methods
+
+    #region Movements
+    /// <summary>
+    /// Move the player in a direction.
+    /// </summary>
+    /// <param name="_position">Position where the character is moving to.</param>
+    public void Move(Vector2 _position)
+    {
+
+    }
+
+    /// <summary>
+    /// Make the character jump in a straight vertical movement.
+    /// </summary>
+    /// <returns></returns>
+    public IEnumerator Jump()
+    {
+        yield break;
+    }
+    #endregion
+
+    #region Actions & Attacks
+    /// <summary>
+    /// Make the character prepare a strike with his bat. It's gonna rock.
+    /// </summary>
+    /// <returns>IEnumerator, baby.</returns>
+    public IEnumerator Strike()
+    {
+        yield break;
+    }
+
+    /// <summary>
+    /// Make the character prepare a grenade throw.
+    /// </summary>
+    /// <returns>IEnumerator, baby.</returns>
+    public IEnumerator ThrowGrenade()
+    {
+        yield break;
+    }
+    #endregion
+
+    #region Others
+    /// <summary>
+    /// Makes the character die. And explode.
+    /// </summary>
+    public void Die()
+    {
+
+    }
+
+    /// <summary>
+    /// Flips the character on the horizontal axis ; in other words, change the side he's looking.
+    /// </summary>
+    public void Flip()
+    {
+        isFacingRight = !isFacingRight;
+        transform.Rotate(Vector3.forward, 180);
+    }
+    #endregion
+
+    #endregion
+
+    #region Unity Methods
+    // Awake is called when the script instance is being loaded
     private void Awake()
     {
         
