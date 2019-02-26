@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour 
 {
-	/* GameManager :
+    /* GameManager :
 	 *
 	 *	#####################
 	 *	###### PURPOSE ######
@@ -13,6 +13,12 @@ public class GameManager : MonoBehaviour
 	 *
 	 *	[PURPOSE]
 	 *
+     *	#####################
+	 *	####### TO DO #######
+	 *	#####################
+     * 
+     *  [TO DO]
+     * 
 	 *	#####################
 	 *	### MODIFICATIONS ###
 	 *	#####################
@@ -27,22 +33,22 @@ public class GameManager : MonoBehaviour
 	 *	-----------------------------------
 	*/
 
-	#region Events
+    #region Events
 
-	#endregion
+    #endregion
 
-	#region Fields / Properties
+    #region Fields / Properties
 
-	#endregion
+    #endregion
 
-	#region Methods
+    #region Methods
 
-	#region Original Methods
+    #region Original Methods
 
-	#endregion
+    #endregion
 
-	#region Unity Methods
-	// Awake is called when the script instance is being loaded
+    #region Unity Methods
+    // Awake is called when the script instance is being loaded
     private void Awake()
     {
 

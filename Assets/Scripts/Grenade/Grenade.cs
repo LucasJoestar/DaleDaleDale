@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
+/// <summary>
+/// Abstract class to inherit from to create a new grenade object , with a different behaviour.
+/// </summary>
 public class Grenade : MonoBehaviour 
 {
     /* Grenade :
@@ -13,6 +13,15 @@ public class Grenade : MonoBehaviour
 	 *
 	 *	Class to inherit from to create a cool grenade for the game.
 	 *
+     *	#####################
+	 *	####### TO DO #######
+	 *	#####################
+     * 
+     *      • Set the owner of the grenade in initialization, implement the explosion system
+     *  and test it with a prefab.
+     *  
+     *      • Set this class as abstract when functional.
+     * 
 	 *	#####################
 	 *	### MODIFICATIONS ###
 	 *	#####################
@@ -24,8 +33,7 @@ public class Grenade : MonoBehaviour
 	 *
 	 *	Creation of the Grenade class, and the GrenadeType enum.
      *	
-     *	    - Added the animator, rigidbody2D, coreExplosionRadius & mainExplosionRadius fields.
-     *	    - Added the Explode & Throw methods.
+     *	    • Created the base version of the script with main components, parameters and methods to fill so that everything is ready to implement the core behaviour of the grenade.
 	 *
 	 *	-----------------------------------
 	*/
@@ -60,7 +68,7 @@ public class Grenade : MonoBehaviour
 
     #region Original Methods
     /// <summary>
-    /// Make the grenade explode. KA-BOUM.
+    /// Makes the grenade explode. KA-BOUM.
     /// </summary>
     private void Explode()
     {
@@ -68,7 +76,7 @@ public class Grenade : MonoBehaviour
     }
 
     /// <summary>
-    /// Throws the grenade in the environment, and active it.
+    /// Throws the grenade in the environment, and activate it.
     /// </summary>
     /// <param name="_velocity">Velocity to give to the grenade movement.</param>
     public void Throw(Vector2 _velocity)
@@ -113,7 +121,7 @@ public class Grenade : MonoBehaviour
 }
 
 /// <summary>
-/// All different grenade types in the game.
+/// All differents grenade types in the game.
 /// </summary>
 public enum GrenadeType
 {
