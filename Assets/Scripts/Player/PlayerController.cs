@@ -5,6 +5,7 @@ using UnityEngine;
 /// <summary>
 /// Controller used to manipulate a player instance in the game.
 /// </summary>
+[RequireComponent(typeof(BoxCollider2D), typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
 {
     /* PlayerController :
@@ -59,8 +60,7 @@ public class PlayerController : MonoBehaviour
      * 
      *  [CONTROLLER]
      * 
-     *      • Append a movement detection system to detect colliders and others,
-     *  so that players do not cross walls and obstacles.
+     *      • Increase speed when moving.
      *  
      *      • Implement a cool simple jump system, with the more you held the button down,
      *  the higher you jump.
@@ -83,6 +83,16 @@ public class PlayerController : MonoBehaviour
 	 *	### MODIFICATIONS ###
 	 *	#####################
 	 *
+     *	Date :			[27 / 02 / 2019]
+	 *	Author :		[Guibert Lucas]
+	 *
+	 *	Changes :
+     *	
+     *	    • Created the movement system with 3 raycasts, so that player do not cross
+     *	walls or obstacles ! 100% operational, pretty funky baby.
+	 *
+	 *	-----------------------------------
+     * 
      *	Date :			[26 / 02 / 2019]
 	 *	Author :		[Guibert Lucas]
 	 *
@@ -146,12 +156,16 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private new Rigidbody2D rigidbody = null;
     #endregion
 
-    #region Variables
+    #region Parameters
+    /// <summary>
+    /// Determines what is an obstacle, and what is not.
+    /// </summary>
+    [SerializeField] private LayerMask whatIsObstacle = new LayerMask();
+
     /// <summary>
     /// All grenades the player is carrying on.
     /// </summary>
-    [SerializeField]
-    private Dictionary<GrenadeType, int> grenades = new Dictionary<GrenadeType, int>()
+    [SerializeField] private Dictionary<GrenadeType, int> grenades = new Dictionary<GrenadeType, int>()
     {
         { GrenadeType.Classic, 3 }, { GrenadeType.Bouncing, 0 }, { GrenadeType.Sticky, 0 }
     };
@@ -160,7 +174,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private GrenadeType selectedGrenade = GrenadeType.Classic;
 
     /// <summary>
-    /// The actually grenade type selected by the player.
+    /// The actual grenade type selected by the player.
     /// </summary>
     public GrenadeType SelectedGrenade
     {
@@ -171,17 +185,27 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    /// <summary>Backing field for <see cref="IsFacingRight"/>.</summary>
-    [SerializeField] private bool isFacingRight = true;
+
+    /// <summary>
+    /// The currently charging action of the player.
+    /// </summary>
+    [SerializeField] private ChargingAction chargingAction = ChargingAction.None;
+
+    /// <summary>
+    /// The state of the current charging action of the player.
+    /// </summary>
+    [SerializeField] private ChargingActionState chargingActionState = ChargingActionState.Basic;
+
+    /// <summary>
+    /// Indicates if the player is against a wall, and if so at which side of him it is.
+    /// </summary>
+    [SerializeField] private AgainstWall againstWall = AgainstWall.None;
+
 
     /// <summary>
     /// If true, the player is facing the right side of the screen ; otherwise, facing the left one.
     /// </summary>
-    public bool IsFacingRight
-    {
-        get { return isFacingRight; }
-        private set { isFacingRight = value; }
-    }
+    [SerializeField] private bool isFacingRight = true;
 
     /// <summary>
     /// Indicates if the player is currently on ground, or in the air.
@@ -189,14 +213,61 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private bool isOnGround = false;
 
     /// <summary>
-    /// Speed of the player movements.
+    /// Indicates if the player is currently moving.
     /// </summary>
-    [SerializeField] private float speed = 1;
+    [SerializeField] private bool isMoving = false;
 
     /// <summary>
-    /// Value used to add vertical velocity to the player when jumping.
+    /// If in animation, the player must wait to exit it before starting another action.
     /// </summary>
-    [SerializeField] private float jumpForce = 250;
+    [SerializeField] private bool isInAnimation = false;
+
+
+    /// <summary>
+    /// Current speed of the player movements.
+    /// </summary>
+    [SerializeField] private float speed = 0;
+
+    /// <summary>
+    /// Maximum speed of the player movements.
+    /// </summary>
+    [SerializeField] private float maxSpeed = 2;
+
+    /// <summary>
+    /// Coefficient used to multiple player speed by.
+    /// </summary>
+    [SerializeField] private float speedCoef = 1;
+
+    /// <summary>
+    /// Initial speed of the player movements when starting moving.
+    /// </summary>
+    [SerializeField] private float initialSpeed = 1;
+
+    /// <summary>
+    /// Time it take for the player when starting moving to reach his maximum speed.
+    /// </summary>
+    [SerializeField] private float speedIncreaseDuration = .5f;
+
+
+    /// <summary>
+    /// Y velocity added to the player when performing a standard jumping.
+    /// </summary>
+    [SerializeField] private int jumpForce = 250;
+
+    /// <summary>
+    /// Maximum duration of a standard jump.
+    /// </summary>
+    [SerializeField] private float jumpMaxDuration = 1;
+
+    /// <summary>
+    /// Force added the player when performing a wall jump.
+    /// </summary>
+    [SerializeField] private Vector2 wallJumpForce = new Vector2(-2, 1);
+
+    /// <summary>
+    /// Maximum duration of a wall jump.
+    /// </summary>
+    [SerializeField] private float wallJumpMaxDuration = .5f;
     #endregion
 
     #region Inputs
@@ -215,17 +286,12 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// Center point of the collider (in local space).
     /// </summary>
-    private Vector3 colliderCenter = Vector2.zero;
+    private Vector3 colliderCenter = Vector3.zero;
 
     /// <summary>
-    /// Point at the top right of the collider, always equal to center + extents (in local space).
+    /// Extents of the collider (in world space).
     /// </summary>
-    private Vector3 colliderMax = Vector2.one;
-
-    /// <summary>
-    /// Point at the bottom left of the collider, always equal to center - extents (in local space).
-    /// </summary>
-    private Vector3 colliderMin = -Vector2.one;
+    private Vector2 colliderExtents = Vector2.one;
     #endregion
 
     #endregion
@@ -250,10 +316,108 @@ public class PlayerController : MonoBehaviour
 
             Move(new Vector2(transform.position.x + _horizontal, transform.position.y));
         }
+        else if (isMoving)
+        {
+            isMoving = false;
+        }
     }
     #endregion
 
     #region Movements
+    /// <summary>
+    /// Move the player in a direction.
+    /// </summary>
+    /// <param name="_position">Position to move the player in direction (in world space).</param>
+    public void Move(Vector2 _position)
+    {
+        // Get the new position of the character
+        Vector2 _newPosition = Vector2.Lerp(transform.position, _position, Time.deltaTime * speed * speedCoef);
+
+        /* Before moving, raycast between the actual position and the desired one ;
+         * To do that, follow these 3 steps :
+         *
+         *  - First, raycast from the collider facing side bottom corner, where it is most likely
+         *  to encounter an obstacle.
+         *  
+         *  - If nothing is hit, continue by raycasting from the facing side top one,
+         *  to check if something is at the top level of the player.
+         *  
+         *  - Finally, if it's all good, raycast from the facing side center point
+         *  of the collider, to get if something is in the middle.
+         *  
+         *      During these steps, if an obstacle is found, stop raycasting and set
+         *  the player new position against the obstacle.
+        */
+
+        // Creates variables for raycast
+        RaycastHit2D _hit;
+        Vector2 _direction = isFacingRight ? Vector2.right : Vector2.left;
+        float _distance = Mathf.Abs(_newPosition.x - transform.position.x);
+
+        Vector2 _colliderRight = new Vector2(transform.position.x + ((colliderCenter.x + colliderExtents.x) * isFacingRight.Sign()), transform.position.y + colliderCenter.y);
+
+        // Bottom raycast
+        _hit = Physics2D.Raycast(new Vector2(_colliderRight.x, _colliderRight.y - colliderExtents.y), _direction, _distance, whatIsObstacle);
+
+        if (_hit.collider != null)
+        {
+            Debug.Log($"Obstacle at Bottom ! => {_hit.collider.name}");
+
+            // Moves the player on the raycast result
+            MoveOnRaycast(_hit);
+            return;
+        }
+
+        // Top raycast
+        _hit = Physics2D.Raycast(new Vector2(_colliderRight.x, _colliderRight.y + colliderExtents.y), _direction, _distance, whatIsObstacle);
+
+        if (_hit.collider != null)
+        {
+            Debug.Log($"Obstacle at Top ! => {_hit.collider.name}");
+
+            // Moves the player on the raycast result
+            MoveOnRaycast(_hit);
+            return;
+        }
+
+        // Center raycast
+        _hit = Physics2D.Raycast(_colliderRight, _direction, _distance, whatIsObstacle);
+
+        if (_hit.collider != null)
+        {
+            Debug.Log($"Obstacle at Center ! => {_hit.collider.name}");
+
+            // Moves the player on the raycast result
+            MoveOnRaycast(_hit);
+            return;
+        }
+
+        // Moves the player
+        transform.position = _newPosition;
+        if (!isMoving) isMoving = true;
+    }
+
+    /// <summary>
+    /// Referencing on a raycast hit, move or not the player.
+    /// </summary>
+    /// <param name="_hit">Raycast hit used to move the player. Must have a non null collider.</param>
+    private void MoveOnRaycast(RaycastHit2D _hit)
+    {
+        // Set the player position if needed
+        if (_hit.distance > 0)
+        {
+            float _xColliderEdge = _hit.collider.bounds.center.x - (_hit.collider.bounds.extents.x * isFacingRight.Sign());
+
+            transform.position = new Vector3(_xColliderEdge - ((colliderCenter.x + colliderExtents.x) * isFacingRight.Sign()), transform.position.y);
+
+            if (!isMoving) isMoving = true;
+        }
+        else if (isMoving)
+        {
+            isMoving = false;
+        }
+    }
+
     /// <summary>
     /// Flips the character on the horizontal axis ; in other words, change the side he's looking.
     /// </summary>
@@ -264,37 +428,22 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// Get collider center, max and min points in local space, and update
-    /// local variables values on them.
-    /// </summary>
-    public void GetColliderBounds()
-    {
-        colliderCenter = collider.bounds.center - transform.position;
-        colliderMax = colliderCenter + collider.bounds.extents;
-        colliderMin = colliderCenter - collider.bounds.extents;
-    }
-
-    /// <summary>
-    /// Move the player in a direction.
-    /// </summary>
-    /// <param name="_position">Position where the character is moving to.</param>
-    public void Move(Vector2 _position)
-    {
-        // Get the new position of the character
-        Vector2 _newPosition = Vector2.Lerp(transform.position, _position, Time.deltaTime * speed);
-
-
-
-        transform.position = _newPosition;
-    }
-
-    /// <summary>
     /// Make the character jump in a straight vertical movement.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>IEnumerator, baby.</returns>
     public IEnumerator Jump()
     {
         yield break;
+    }
+
+    /// <summary>
+    /// Get collider center, max and min points in local space, and update
+    /// local variables values on them.
+    /// </summary>
+    public void UpdateColliderBounds()
+    {
+        colliderCenter = collider.bounds.center - transform.position;
+        colliderExtents = collider.bounds.extents - (Vector3.one * .001f);
     }
     #endregion
 
@@ -343,12 +492,12 @@ public class PlayerController : MonoBehaviour
         }
         if (!collider)
         {
-            collider = GetComponentInChildren<BoxCollider2D>();
+            collider = GetComponent<BoxCollider2D>();
             if (!collider) Debug.LogWarning($"Collider missing on \"{name}\" Pinata");
         }
         if (!rigidbody)
         {
-            rigidbody = GetComponentInChildren<Rigidbody2D>();
+            rigidbody = GetComponent<Rigidbody2D>();
             if (!rigidbody) Debug.LogWarning($"Rigidbody missing on \"{name}\" Pinata");
         }
         #endif
@@ -358,29 +507,42 @@ public class PlayerController : MonoBehaviour
     private void OnDrawGizmos()
     {
         // Draws points positions used for movement raycasts
-        if (!collider) return;
+        if (collider)
+        {
+            Gizmos.color = Color.cyan;
 
-        Gizmos.color = Color.cyan;
+            if (!UnityEditor.EditorApplication.isPlaying)
+            {
+                Gizmos.DrawSphere(collider.bounds.max, .1f);
+                Gizmos.DrawSphere(new Vector2(collider.bounds.max.x, collider.bounds.center.y), .1f);
+                Gizmos.DrawSphere(new Vector2(collider.bounds.max.x, collider.bounds.min.y), .1f);
 
-        Gizmos.DrawSphere(collider.bounds.max, .1f);
-        Gizmos.DrawSphere(new Vector2(collider.bounds.max.x, collider.bounds.center.y), .1f);
-        Gizmos.DrawSphere(new Vector2(collider.bounds.max.x, collider.bounds.min.y), .1f);
+                Gizmos.DrawSphere(new Vector2(collider.bounds.min.x, collider.bounds.max.y), .1f);
+                Gizmos.DrawSphere(new Vector2(collider.bounds.center.x, collider.bounds.max.y), .1f);
 
-        Gizmos.DrawSphere(new Vector2(collider.bounds.min.x, collider.bounds.max.y), .1f);
-        Gizmos.DrawSphere(new Vector2(collider.bounds.center.x, collider.bounds.max.y), .1f);
+                Gizmos.DrawSphere(new Vector2(collider.bounds.min.x, collider.bounds.min.y), .1f);
+                Gizmos.DrawSphere(new Vector2(collider.bounds.center.x, collider.bounds.min.y), .1f);
+            }
+            else
+            {
+                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x + colliderExtents.x, transform.position.y + colliderCenter.y + colliderExtents.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x + colliderExtents.x, transform.position.y + colliderCenter.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x + colliderExtents.x, transform.position.y + colliderCenter.y - colliderExtents.y), .1f);
 
-        Gizmos.DrawSphere(new Vector2(collider.bounds.min.x, collider.bounds.min.y), .1f);
-        Gizmos.DrawSphere(new Vector2(collider.bounds.center.x, collider.bounds.min.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x - colliderExtents.x, transform.position.y + colliderCenter.y + colliderExtents.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x, transform.position.y + colliderCenter.y + colliderExtents.y), .1f);
 
-        Gizmos.color = Color.white;
-
-        
+                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x - colliderExtents.x, transform.position.y + colliderCenter.y - colliderExtents.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x, transform.position.y + colliderCenter.y - colliderExtents.y), .1f);
+            }
+        }
     }
 
     // Use this for initialization
     private void Start()
     {
-        GetColliderBounds();
+        // Get collider bounds at start
+        UpdateColliderBounds();
     }
 	
 	// Update is called once per frame
@@ -392,4 +554,37 @@ public class PlayerController : MonoBehaviour
 	#endregion
 
 	#endregion
+}
+
+/// <summary>
+/// Used to know if a player is against a wall, and if so,
+/// which side of him is it.
+/// </summary>
+public enum AgainstWall
+{
+    None,
+    Left,
+    Right
+}
+
+/// <summary>
+/// Used to know if a player is currently charging an action, and if so,
+/// which action is it.
+/// </summary>
+public enum ChargingAction
+{
+    None,
+    Strike,
+    Throw
+}
+
+/// <summary>
+/// Contains all different charging states for players actions, like striking or throwing.
+/// </summary>
+public enum ChargingActionState
+{
+    Basic,
+    Loaded,
+    Concentrate,
+    Ultra
 }

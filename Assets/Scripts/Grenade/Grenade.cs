@@ -125,7 +125,7 @@ public class Grenade : MonoBehaviour
 /// </summary>
 public enum GrenadeType
 {
-    Bouncing,
     Classic,
+    Bouncing,
     Sticky
 }
