@@ -22,7 +22,7 @@ public class PlayerController : MonoBehaviour
      *	
      *	        • Move along the X axis in both directions, and do not cross walls.
      *	        
-     *	        • Jump when on ground, and move according to air restistance.
+     *	        • Jump when on ground, and move according to air resistance.
      *	        
      *	        • Jump when against a wall, pushing the character in the opposite direction.
      *	        
@@ -59,14 +59,11 @@ public class PlayerController : MonoBehaviour
 	 *	#####################
      * 
      *  [CONTROLLER]
-     * 
-     *      • Increase speed when moving.
      *  
-     *      • Implement a cool simple jump system, with the more you held the button down,
-     *  the higher you jump.
+     *      • Move with thr rigidbody system and remove custom one, or find a way
+     *  to use both at the same time (wall jump issue).
      *  
-     *      • Create a wall jump system, with player pushed away from support ; you can
-     *  perform this action as much as you want with no restriction.
+     *      • Set slide system for when moving on Y axis while against a wall.
      *  
      *  [ACTIONS]
      *  
@@ -75,14 +72,35 @@ public class PlayerController : MonoBehaviour
      *  
      *      • Implement the bat with load & repulse.
      * 
-     * [OTHERS]
+     *  [OTHERS]
      * 
      *      • Link a Player object to the controller.
+     *  
+     *  [IDEAS]
+     *  
+     *      • Create my own physic system, so rigidbody could be taken out of simulation
+     *  and everything would be fully under control.
      * 
 	 *	#####################
 	 *	### MODIFICATIONS ###
 	 *	#####################
 	 *
+     *	Date :			[01 / 03 / 2019]
+	 *	Author :		[Guibert Lucas]
+	 *
+	 *	Changes :
+     *	
+     *	    • Players now have an increasing speed when moving.
+     *	    
+     *	    • We can now jump, in a vertical way ; the more you held the jump button,
+     *	the higher you jump.
+     *	
+     *	    • First wall jump system version implemented ; but... use custom movement
+     *	system along with velocity does not match very well. Got to try all with
+     *	rigidbody, and see how it work.
+	 *
+	 *	-----------------------------------
+     * 
      *	Date :			[27 / 02 / 2019]
 	 *	Author :		[Guibert Lucas]
 	 *
@@ -139,6 +157,15 @@ public class PlayerController : MonoBehaviour
 
     #region Fields / Properties
 
+    #region Constants
+    /// <summary>
+    /// Value used to modify speed coefficient by when in air.
+    /// When getting off ground, speed coefficient is multiplied by this.
+    /// Conversely, when getting on ground it is divided by this.
+    /// </summary>
+    private const float SPEED_CONSTRAINT_IN_AIR = .7f;
+    #endregion
+
     #region Components & References
     /// <summary>
     /// Animator of the player, used to play all its animations, like running, dying, etc...
@@ -185,7 +212,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
     /// <summary>
     /// The currently charging action of the player.
     /// </summary>
@@ -212,10 +238,33 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     [SerializeField] private bool isOnGround = false;
 
+    public bool IsOnGround
+    {
+        get { return isOnGround; }
+        private set
+        {
+            isOnGround = value;
+
+            if (value) speedCoef /= SPEED_CONSTRAINT_IN_AIR;
+            else speedCoef *= SPEED_CONSTRAINT_IN_AIR;
+        }
+    }
+
+    /// <summary>Backing field for <see cref="IsRunning"/>.</summary>
+    [SerializeField] private bool isRunning = false;
+
     /// <summary>
-    /// Indicates if the player is currently moving.
+    /// Indicates if the player is currently running.
     /// </summary>
-    [SerializeField] private bool isMoving = false;
+    public bool IsRunning
+    {
+        get { return isRunning; }
+        private set
+        {
+            isRunning = value;
+            if (!value) speed = 0;
+        }
+    }
 
     /// <summary>
     /// If in animation, the player must wait to exit it before starting another action.
@@ -252,7 +301,13 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// Y velocity added to the player when performing a standard jumping.
     /// </summary>
-    [SerializeField] private int jumpForce = 250;
+    [SerializeField] private float jumpForce = 10;
+
+    /// <summary>
+    /// Y velocity added the player after a standard jump
+    /// while jumping & holding the jump button.
+    /// </summary>
+    [SerializeField] private float jumpForceInDuration = .25f;
 
     /// <summary>
     /// Maximum duration of a standard jump.
@@ -263,6 +318,12 @@ public class PlayerController : MonoBehaviour
     /// Force added the player when performing a wall jump.
     /// </summary>
     [SerializeField] private Vector2 wallJumpForce = new Vector2(-2, 1);
+
+    /// <summary>
+    /// Y velocity added the player after a wall jump
+    /// while jumping & holding the jump button.
+    /// </summary>
+    [SerializeField] private float wallJumpForceInDuration = .25f;
 
     /// <summary>
     /// Maximum duration of a wall jump.
@@ -300,7 +361,7 @@ public class PlayerController : MonoBehaviour
 
     #region Original Methods
 
-    #region Inputs
+    #region Update
     /// <summary>
     /// Checks the player inputs, and executes associated actions.
     /// </summary>
@@ -312,24 +373,116 @@ public class PlayerController : MonoBehaviour
         if (_horizontal != 0)
         {
             // Flip the character if looking the opposite side of his movement
+            // Do not move if against a wall on the movement direction
             if ((isFacingRight && _horizontal < 0) || (!isFacingRight && _horizontal > 0)) Flip();
 
-            Move(new Vector2(transform.position.x + _horizontal, transform.position.y));
+            if (againstWall == AgainstWall.None || (againstWall == AgainstWall.Left && _horizontal > 0) || _horizontal < 0)
+            {
+                Move(new Vector2(transform.position.x + _horizontal, transform.position.y));
+            }
         }
-        else if (isMoving)
+        else if (isRunning)
         {
-            isMoving = false;
+            IsRunning = false;
+        }
+
+        // If pressing jump button, let's jump
+        if (Input.GetButtonDown(JumpButton)) Jump();
+    }
+
+    /// <summary>
+    /// Updates various states of the player.
+    /// </summary>
+    private void UpdateState()
+    {
+        /* Get if the player is on ground
+         * To do that, perform 3 raycast down from the collider bottom :
+         * one from center, one from left side and a last one from right side ;
+         * 
+         * If any of these touch something, then the player is on ground
+        */
+
+        // Get point at the bottom center of the collider
+        Vector2 _colliderPoint = new Vector2(transform.position.x + colliderCenter.x, transform.position.y + colliderCenter.y - colliderExtents.y);
+
+        // Raycast
+        if (!Raycast(_colliderPoint, Vector2.down, .05f) &&
+            !Raycast(new Vector2(_colliderPoint.x + colliderExtents.x - .001f, _colliderPoint.y), Vector2.down, .05f) &&
+            !Raycast(new Vector2(_colliderPoint.x - colliderExtents.x + .001f, _colliderPoint.y), Vector2.down, .05f))
+        {
+            // If nothing is hit, player is not on ground
+            if (isOnGround) IsOnGround = false;
+        }
+        else if (!isOnGround)
+        {
+            IsOnGround = true;
+        }
+
+        /* Now, get if the player is against a wall
+         * To do so, that's the same than the ground check, except that
+         * we have to check for left & right sides instead of bottom.
+         * 
+         * If player is against a wall on left side, don't raycast for right
+        */
+        _colliderPoint = new Vector2(transform.position.x + colliderCenter.x - colliderExtents.x, transform.position.y + colliderCenter.y);
+
+        // Raycast for left side
+        if (!Raycast(_colliderPoint, Vector2.left, .025f) &&
+            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + colliderExtents.y), Vector2.left, .025f) &&
+            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - colliderExtents.y), Vector2.left, .025f))
+        {
+            // If not against a wall on left side,
+            // raycast for right side
+            _colliderPoint = new Vector2(_colliderPoint.x + (colliderExtents.x * 2), _colliderPoint.y);
+
+            if (!Raycast(_colliderPoint, Vector2.right, .025f) &&
+                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + colliderExtents.y), Vector2.right, .025f) &&
+                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - colliderExtents.y), Vector2.right, .025f))
+            {
+                // Well, player is not against a wall then ; update variable if needed
+                if (againstWall != AgainstWall.None)
+                {
+                    againstWall = AgainstWall.None;
+                }
+            }
+            // If on against a wall on right side, update variable if needed
+            else if (againstWall != AgainstWall.Right)
+            {
+                againstWall = AgainstWall.Right;
+            }
+        }
+        // If on against a wall on left side, update variable if needed
+        else if (againstWall != AgainstWall.Left)
+        {
+            againstWall = AgainstWall.Left;
         }
     }
+
+    /// <summary>
+    /// Raycast down a given point and get if something was touched.
+    /// </summary>
+    /// <param name="_point">Position from where to start raycast (in world space).</param>
+    /// <returns>Return true if something was touched, false otherwise.</returns>
+    private bool Raycast(Vector2 _point, Vector2 _direction, float _distance) { return Physics2D.Raycast(_point, _direction, _distance, whatIsObstacle).collider != null; }
     #endregion
 
     #region Movements
     /// <summary>
-    /// Move the player in a direction.
+    /// Moves the player in a direction.
     /// </summary>
     /// <param name="_position">Position to move the player in direction (in world space).</param>
     public void Move(Vector2 _position)
     {
+        // Increase player speed if not at max
+        if (speed < maxSpeed)
+        {
+            if (!isRunning) speed = initialSpeed;
+            else
+            {
+                speed += ((maxSpeed - initialSpeed) / speedIncreaseDuration) * Time.deltaTime;
+            }
+        }
+
         // Get the new position of the character
         Vector2 _newPosition = Vector2.Lerp(transform.position, _position, Time.deltaTime * speed * speedCoef);
 
@@ -361,7 +514,7 @@ public class PlayerController : MonoBehaviour
 
         if (_hit.collider != null)
         {
-            Debug.Log($"Obstacle at Bottom ! => {_hit.collider.name}");
+            //Debug.Log($"Obstacle at Bottom ! => {_hit.collider.name}");
 
             // Moves the player on the raycast result
             MoveOnRaycast(_hit);
@@ -373,7 +526,7 @@ public class PlayerController : MonoBehaviour
 
         if (_hit.collider != null)
         {
-            Debug.Log($"Obstacle at Top ! => {_hit.collider.name}");
+            //Debug.Log($"Obstacle at Top ! => {_hit.collider.name}");
 
             // Moves the player on the raycast result
             MoveOnRaycast(_hit);
@@ -385,16 +538,16 @@ public class PlayerController : MonoBehaviour
 
         if (_hit.collider != null)
         {
-            Debug.Log($"Obstacle at Center ! => {_hit.collider.name}");
+            //Debug.Log($"Obstacle at Center ! => {_hit.collider.name}");
 
             // Moves the player on the raycast result
             MoveOnRaycast(_hit);
             return;
         }
 
-        // Moves the player
+        // Directly moves the player to the destination if nothing is on the road
         transform.position = _newPosition;
-        if (!isMoving) isMoving = true;
+        if (!isRunning) isRunning = true;
     }
 
     /// <summary>
@@ -410,11 +563,11 @@ public class PlayerController : MonoBehaviour
 
             transform.position = new Vector3(_xColliderEdge - ((colliderCenter.x + colliderExtents.x) * isFacingRight.Sign()), transform.position.y);
 
-            if (!isMoving) isMoving = true;
+            if (!isRunning) isRunning = true;
         }
-        else if (isMoving)
+        else if (isRunning)
         {
-            isMoving = false;
+            IsRunning = false;
         }
     }
 
@@ -428,11 +581,67 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// Make the character jump in a straight vertical movement.
+    /// Makes the player perform a "High" or "Wall" jump depending on their situation.
+    /// </summary>
+    public void Jump()
+    {
+        if (isOnGround) StartCoroutine(HighJump());
+        else if (againstWall != AgainstWall.None) StartCoroutine(WallJump());
+    }
+
+    /// <summary>
+    /// Makes the player jump in a straight vertical movement.
     /// </summary>
     /// <returns>IEnumerator, baby.</returns>
-    public IEnumerator Jump()
+    private IEnumerator HighJump()
     {
+        // Creates timer for jump duration
+        float _timer = 0;
+
+        // Adds initial force to jump
+        rigidbody.velocity = new Vector2(rigidbody.velocity.x, jumpForce);
+
+        yield return null;
+
+        // While holding the jump button and the jump has not reach is maximum duration,
+        // add more force to the jump !
+        while (Input.GetButton(JumpButton) && _timer < jumpMaxDuration)
+        {
+            rigidbody.velocity = new Vector2(rigidbody.velocity.x, rigidbody.velocity.y + jumpForceInDuration);
+
+            yield return null;
+
+            _timer += Time.deltaTime;
+        }
+
+        yield break;
+    }
+
+    /// <summary>
+    /// Makes the player jump against a wall.
+    /// </summary>
+    /// <returns>IEnumerator, baby.</returns>
+    private IEnumerator WallJump()
+    {
+        // Creates timer for jump duration
+        float _timer = 0;
+
+        // Adds initial force to jump
+        rigidbody.velocity = new Vector2(rigidbody.velocity.x + (wallJumpForce.x * (againstWall == AgainstWall.Left ? -1 : 1)), (rigidbody.velocity.y * .25f) + wallJumpForce.y);
+
+        yield return null;
+
+        // While holding the jump button and the jump has not reach is maximum duration,
+        // add more force to the jump !
+        while (Input.GetButton(JumpButton) && _timer < wallJumpMaxDuration)
+        {
+            rigidbody.velocity = new Vector2(rigidbody.velocity.x, rigidbody.velocity.y + wallJumpForceInDuration);
+
+            yield return null;
+
+            _timer += Time.deltaTime;
+        }
+
         yield break;
     }
 
@@ -443,7 +652,7 @@ public class PlayerController : MonoBehaviour
     public void UpdateColliderBounds()
     {
         colliderCenter = collider.bounds.center - transform.position;
-        colliderExtents = collider.bounds.extents - (Vector3.one * .001f);
+        colliderExtents = (Vector2)collider.bounds.extents - new Vector2(.001f, .001f);
     }
     #endregion
 
@@ -548,6 +757,9 @@ public class PlayerController : MonoBehaviour
 	// Update is called once per frame
 	private void Update()
     {
+        // Update various states of the player
+        UpdateState();
+
         // Check player inputs
         CheckInputs();
     }
