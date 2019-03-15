@@ -367,6 +367,15 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void CheckInputs()
     {
+        // If pressing jump button, let's jump
+        if (Input.GetButtonDown(JumpButton)) Jump();
+    }
+
+    /// <summary>
+    /// Checks the player movements.
+    /// </summary>
+    private void CheckMovement()
+    {
         // Get the horizontal movement, and move if not null
         float _horizontal = Input.GetAxis(HorizontalAxis);
 
@@ -378,16 +387,13 @@ public class PlayerController : MonoBehaviour
 
             if (againstWall == AgainstWall.None || (againstWall == AgainstWall.Left && _horizontal > 0) || _horizontal < 0)
             {
-                Move(new Vector2(transform.position.x + _horizontal, transform.position.y));
+                Move(_horizontal);
             }
         }
         else if (isRunning)
         {
             IsRunning = false;
         }
-
-        // If pressing jump button, let's jump
-        if (Input.GetButtonDown(JumpButton)) Jump();
     }
 
     /// <summary>
@@ -416,6 +422,7 @@ public class PlayerController : MonoBehaviour
         else if (!isOnGround)
         {
             IsOnGround = true;
+            if (rigidbody.velocity.x != 0) rigidbody.velocity *= .1f;
         }
 
         /* Now, get if the player is against a wall
@@ -468,10 +475,10 @@ public class PlayerController : MonoBehaviour
 
     #region Movements
     /// <summary>
-    /// Moves the player in a direction.
+    /// Moves the player in the X axis.
     /// </summary>
-    /// <param name="_position">Position to move the player in direction (in world space).</param>
-    public void Move(Vector2 _position)
+    /// <param name="_xMovement">Movement in the X axis.</param>
+    public void Move(float _xMovement)
     {
         // Increase player speed if not at max
         if (speed < maxSpeed)
@@ -483,8 +490,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Get the new position of the character
-        Vector2 _newPosition = Vector2.Lerp(transform.position, _position, Time.deltaTime * speed * speedCoef);
+        if (!isRunning) isRunning = true;
 
         /* Before moving, raycast between the actual position and the desired one ;
          * To do that, follow these 3 steps :
@@ -501,6 +507,28 @@ public class PlayerController : MonoBehaviour
          *      During these steps, if an obstacle is found, stop raycasting and set
          *  the player new position against the obstacle.
         */
+
+        // Get the new position of the character
+        Vector2 _newPosition = Vector2.Lerp(transform.position, new Vector2(transform.position.x + _xMovement, transform.position.y), Time.fixedDeltaTime * speed * speedCoef);
+
+        // If on ground, just teleport the rigidbody to a position
+        /*if (isOnGround)
+        {
+            rigidbody.position = _newPosition;
+        }
+        // If in air, add a force to the rigidbody
+        else
+        {
+            rigidbody.AddForce(new Vector2(_xMovement, 0).normalized * speed);
+        }*/
+
+        // If in the air and moving in the opposite direction
+        // of the rigidbody velocity, add opposite force
+        if (!isOnGround)
+        {
+            rigidbody.AddForce(new Vector2((_newPosition.x - transform.position.x) / (Time.fixedDeltaTime / 3), 0));
+            return;
+        }
 
         // Creates variables for raycast
         RaycastHit2D _hit;
@@ -547,7 +575,6 @@ public class PlayerController : MonoBehaviour
 
         // Directly moves the player to the destination if nothing is on the road
         transform.position = _newPosition;
-        if (!isRunning) isRunning = true;
     }
 
     /// <summary>
@@ -710,6 +737,13 @@ public class PlayerController : MonoBehaviour
             if (!rigidbody) Debug.LogWarning($"Rigidbody missing on \"{name}\" Pinata");
         }
         #endif
+    }
+
+    // Frame-rate independent MonoBehaviour.FixedUpdate message for physics calculations.
+    private void FixedUpdate()
+    {
+        // Check player movement
+        CheckMovement();
     }
 
     // Implement OnDrawGizmos if you want to draw gizmos that are also pickable and always drawn
