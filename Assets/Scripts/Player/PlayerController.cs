@@ -163,7 +163,7 @@ public class PlayerController : MonoBehaviour
     /// When getting off ground, speed coefficient is multiplied by this.
     /// Conversely, when getting on ground it is divided by this.
     /// </summary>
-    private const float SPEED_CONSTRAINT_IN_AIR = .7f;
+    private const float SPEED_CONSTRAINT_IN_AIR = 1.125f;
     #endregion
 
     #region Components & References
@@ -385,7 +385,7 @@ public class PlayerController : MonoBehaviour
             // Do not move if against a wall on the movement direction
             if ((isFacingRight && _horizontal < 0) || (!isFacingRight && _horizontal > 0)) Flip();
 
-            if (againstWall == AgainstWall.None || (againstWall == AgainstWall.Left && _horizontal > 0) || _horizontal < 0)
+            if (againstWall == AgainstWall.None || ((againstWall == AgainstWall.Left) && _horizontal > 0) || ((againstWall == AgainstWall.Right) && _horizontal < 0))
             {
                 Move(_horizontal);
             }
@@ -393,6 +393,7 @@ public class PlayerController : MonoBehaviour
         else if (isRunning)
         {
             IsRunning = false;
+            if (rigidbody.velocity.x != 0) rigidbody.velocity = new Vector2(rigidbody.velocity.x * .25f, rigidbody.velocity.y);
         }
     }
 
@@ -511,22 +512,24 @@ public class PlayerController : MonoBehaviour
         // Get the new position of the character
         Vector2 _newPosition = Vector2.Lerp(transform.position, new Vector2(transform.position.x + _xMovement, transform.position.y), Time.fixedDeltaTime * speed * speedCoef);
 
-        // If on ground, just teleport the rigidbody to a position
-        /*if (isOnGround)
-        {
-            rigidbody.position = _newPosition;
-        }
-        // If in air, add a force to the rigidbody
-        else
-        {
-            rigidbody.AddForce(new Vector2(_xMovement, 0).normalized * speed);
-        }*/
-
         // If in the air and moving in the opposite direction
         // of the rigidbody velocity, add opposite force
         if (!isOnGround)
         {
-            rigidbody.AddForce(new Vector2((_newPosition.x - transform.position.x) / (Time.fixedDeltaTime / 3), 0));
+            float _xForce = ((_newPosition.x - transform.position.x) / (Time.fixedDeltaTime / 2));
+
+            if ((_xMovement < 0))
+            {
+                if (rigidbody.velocity.x > _xForce)
+                {
+                    rigidbody.AddForce(new Vector2(_xForce - rigidbody.velocity.x, 0));
+                }
+            }
+            else if (rigidbody.velocity.x < _xForce)
+            {
+                rigidbody.AddForce(new Vector2(_xForce - rigidbody.velocity.x, 0));
+            }
+
             return;
         }
 
@@ -626,7 +629,14 @@ public class PlayerController : MonoBehaviour
         float _timer = 0;
 
         // Adds initial force to jump
-        rigidbody.velocity = new Vector2(rigidbody.velocity.x, jumpForce);
+        if (speed != 0)
+        {
+            rigidbody.velocity = new Vector2(isFacingRight.Sign(), jumpForce);
+        }
+        else
+        {
+            rigidbody.velocity = new Vector2(rigidbody.velocity.x, jumpForce);
+        }
 
         yield return null;
 
@@ -784,6 +794,10 @@ public class PlayerController : MonoBehaviour
     // Use this for initialization
     private void Start()
     {
+        // Set speed coef at start
+        if (isOnGround) speedCoef = 1;
+        else speedCoef = SPEED_CONSTRAINT_IN_AIR;
+
         // Get collider bounds at start
         UpdateColliderBounds();
     }
