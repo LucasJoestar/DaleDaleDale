@@ -60,10 +60,7 @@ public class PlayerController : MonoBehaviour
      * 
      *  [CONTROLLER]
      *  
-     *      • Move with thr rigidbody system and remove custom one, or find a way
-     *  to use both at the same time (wall jump issue).
-     *  
-     *      • Set slide system for when moving on Y axis while against a wall.
+     *      • Adjust air control.
      *  
      *  [ACTIONS]
      *  
@@ -76,15 +73,39 @@ public class PlayerController : MonoBehaviour
      * 
      *      • Link a Player object to the controller.
      *  
-     *  [IDEAS]
-     *  
-     *      • Create my own physic system, so rigidbody could be taken out of simulation
-     *  and everything would be fully under control.
-     * 
 	 *	#####################
 	 *	### MODIFICATIONS ###
 	 *	#####################
 	 *
+     *	Date :			[19 / 03 / 2019]
+	 *	Author :		[Guibert Lucas]
+	 *
+	 *	Changes :
+     *	
+     *	    • Created a sticky behaviour when against a wall.
+	 *
+	 *	-----------------------------------
+     * 
+     *	Date :			[17 / 03 / 2019]
+	 *	Author :		[Guibert Lucas]
+	 *
+	 *	Changes :
+     *	
+     *	    • Here it is : a cool movement system, using rigidbody velocity when in air.
+     *	It works fine, pretty fine actually. I'm happy.
+	 *
+	 *	-----------------------------------
+     * 
+     *	Date :			[15 / 03 / 2019]
+	 *	Author :		[Guibert Lucas]
+	 *
+	 *	Changes :
+     *	
+     *	    • Tests on an improved movement system using the rigidbody velocity.
+     *	It doesn't work very well...
+	 *
+	 *	-----------------------------------
+     * 
      *	Date :			[01 / 03 / 2019]
 	 *	Author :		[Guibert Lucas]
 	 *
@@ -164,6 +185,13 @@ public class PlayerController : MonoBehaviour
     /// Conversely, when getting on ground it is divided by this.
     /// </summary>
     private const float SPEED_CONSTRAINT_IN_AIR = 1.125f;
+
+    /// <summary>
+    /// Value used to get a sticky behaviour when against a wall in air.
+    /// Player moving in this situation will accumulate velocity in X, and only move
+    /// when this velocity will exceed the present value.
+    /// </summary>
+    private const int STICKY_BEHAVIOUR_VELOCITY = 250;
     #endregion
 
     #region Components & References
@@ -222,10 +250,21 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     [SerializeField] private ChargingActionState chargingActionState = ChargingActionState.Basic;
 
+    /// <summary>Backing field for <see cref="AgainstWall"/>.</summary>
+    [SerializeField] private AgainstWall againstWall = AgainstWall.None;
+
     /// <summary>
     /// Indicates if the player is against a wall, and if so at which side of him it is.
     /// </summary>
-    [SerializeField] private AgainstWall againstWall = AgainstWall.None;
+    public AgainstWall AgainstWall
+    {
+        get { return againstWall; }
+        private set
+        {
+            againstWall = value;
+            chargedVelocity = 0;
+        }
+    }
 
 
     /// <summary>
@@ -329,6 +368,11 @@ public class PlayerController : MonoBehaviour
     /// Maximum duration of a wall jump.
     /// </summary>
     [SerializeField] private float wallJumpMaxDuration = .5f;
+
+    /// <summary>
+    /// Stacked velocity when against a wall before moving, to make the character sticky.
+    /// </summary>
+    [SerializeField] private float chargedVelocity = 0;
     #endregion
 
     #region Inputs
@@ -450,19 +494,19 @@ public class PlayerController : MonoBehaviour
                 // Well, player is not against a wall then ; update variable if needed
                 if (againstWall != AgainstWall.None)
                 {
-                    againstWall = AgainstWall.None;
+                    AgainstWall = AgainstWall.None;
                 }
             }
             // If on against a wall on right side, update variable if needed
             else if (againstWall != AgainstWall.Right)
             {
-                againstWall = AgainstWall.Right;
+                AgainstWall = AgainstWall.Right;
             }
         }
         // If on against a wall on left side, update variable if needed
         else if (againstWall != AgainstWall.Left)
         {
-            againstWall = AgainstWall.Left;
+            AgainstWall = AgainstWall.Left;
         }
     }
 
@@ -517,6 +561,16 @@ public class PlayerController : MonoBehaviour
         if (!isOnGround)
         {
             float _xForce = ((_newPosition.x - transform.position.x) / (Time.fixedDeltaTime / 2));
+
+            // If against a wall, create a sticky behaviour
+            if (againstWall != AgainstWall.None)
+            {
+                if (Mathf.Abs(chargedVelocity + _xForce) < STICKY_BEHAVIOUR_VELOCITY)
+                {
+                    chargedVelocity += _xForce;
+                    return;
+                }
+            }
 
             if ((_xMovement < 0))
             {
@@ -631,7 +685,7 @@ public class PlayerController : MonoBehaviour
         // Adds initial force to jump
         if (speed != 0)
         {
-            rigidbody.velocity = new Vector2(isFacingRight.Sign(), jumpForce);
+            rigidbody.velocity = new Vector2(rigidbody.velocity.x + (isFacingRight.Sign() * 5), jumpForce);
         }
         else
         {
