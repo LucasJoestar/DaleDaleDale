@@ -77,6 +77,15 @@ public class PlayerController : MonoBehaviour
 	 *	### MODIFICATIONS ###
 	 *	#####################
 	 *
+     *	Date :			[20 / 03 / 2019]
+	 *	Author :		[Guibert Lucas]
+	 *
+	 *	Changes :
+     *	
+     *	    • Some tests on the player gravity and movements in air.
+	 *
+	 *	-----------------------------------
+     * 
      *	Date :			[19 / 03 / 2019]
 	 *	Author :		[Guibert Lucas]
 	 *
@@ -191,7 +200,7 @@ public class PlayerController : MonoBehaviour
     /// Player moving in this situation will accumulate velocity in X, and only move
     /// when this velocity will exceed the present value.
     /// </summary>
-    private const int STICKY_BEHAVIOUR_VELOCITY = 250;
+    private const int STICKY_BEHAVIOUR_VELOCITY = 200;
     #endregion
 
     #region Components & References
@@ -537,22 +546,6 @@ public class PlayerController : MonoBehaviour
 
         if (!isRunning) isRunning = true;
 
-        /* Before moving, raycast between the actual position and the desired one ;
-         * To do that, follow these 3 steps :
-         *
-         *  - First, raycast from the collider facing side bottom corner, where it is most likely
-         *  to encounter an obstacle.
-         *  
-         *  - If nothing is hit, continue by raycasting from the facing side top one,
-         *  to check if something is at the top level of the player.
-         *  
-         *  - Finally, if it's all good, raycast from the facing side center point
-         *  of the collider, to get if something is in the middle.
-         *  
-         *      During these steps, if an obstacle is found, stop raycasting and set
-         *  the player new position against the obstacle.
-        */
-
         // Get the new position of the character
         Vector2 _newPosition = Vector2.Lerp(transform.position, new Vector2(transform.position.x + _xMovement, transform.position.y), Time.fixedDeltaTime * speed * speedCoef);
 
@@ -560,7 +553,8 @@ public class PlayerController : MonoBehaviour
         // of the rigidbody velocity, add opposite force
         if (!isOnGround)
         {
-            float _xForce = ((_newPosition.x - transform.position.x) / (Time.fixedDeltaTime / 2));
+            float _xForce = (_newPosition.x - transform.position.x) / (Time.fixedDeltaTime / 1.75f);
+            //if (Mathf.Sign(_xMovement) != Mathf.Sign(_xForce)) _xForce *= 1.5f;
 
             // If against a wall, create a sticky behaviour
             if (againstWall != AgainstWall.None)
@@ -576,16 +570,32 @@ public class PlayerController : MonoBehaviour
             {
                 if (rigidbody.velocity.x > _xForce)
                 {
-                    rigidbody.AddForce(new Vector2(_xForce - rigidbody.velocity.x, 0));
+                    rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * 2, 0));
                 }
             }
             else if (rigidbody.velocity.x < _xForce)
             {
-                rigidbody.AddForce(new Vector2(_xForce - rigidbody.velocity.x, 0));
+                rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * 2, 0));
             }
 
             return;
         }
+
+        /* Before moving, raycast between the actual position and the desired one ;
+         * To do that, follow these 3 steps :
+         *
+         *  - First, raycast from the collider facing side bottom corner, where it is most likely
+         *  to encounter an obstacle.
+         *  
+         *  - If nothing is hit, continue by raycasting from the facing side top one,
+         *  to check if something is at the top level of the player.
+         *  
+         *  - Finally, if it's all good, raycast from the facing side center point
+         *  of the collider, to get if something is in the middle.
+         *  
+         *      During these steps, if an obstacle is found, stop raycasting and set
+         *  the player new position against the obstacle.
+        */
 
         // Creates variables for raycast
         RaycastHit2D _hit;
