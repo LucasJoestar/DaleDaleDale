@@ -1963,12 +1963,13 @@ MonoBehaviour:
   againstWall: 0
   isFacingRight: 1
   isOnGround: 1
+  CanMove: 1
   isRunning: 0
   isInAnimation: 0
   speed: 0
-  maxSpeed: 10
+  maxSpeed: 9
   speedCoef: 1
-  initialSpeed: 7
+  initialSpeed: 7.5
   speedIncreaseDuration: 0.75
   jumpForce: 15
   jumpForceInDuration: 0.25

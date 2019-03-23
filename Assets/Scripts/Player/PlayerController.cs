@@ -298,6 +298,11 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Indicates if the player can move. Yep, that's it.
+    /// </summary>
+    public bool CanMove = true;
+
     /// <summary>Backing field for <see cref="IsRunning"/>.</summary>
     [SerializeField] private bool isRunning = false;
 
@@ -429,6 +434,9 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void CheckMovement()
     {
+        // If cannot move, do not move
+        if (!CanMove) return;
+
         // Get the horizontal movement, and move if not null
         float _horizontal = Input.GetAxis(HorizontalAxis);
 
@@ -446,7 +454,8 @@ public class PlayerController : MonoBehaviour
         else if (isRunning)
         {
             IsRunning = false;
-            if (rigidbody.velocity.x != 0) rigidbody.velocity = new Vector2(rigidbody.velocity.x * .25f, rigidbody.velocity.y);
+            // Change Velocity => Old : x * .25f | New : the same
+            if (rigidbody.velocity.x != 0) rigidbody.velocity = new Vector2(rigidbody.velocity.x, rigidbody.velocity.y);
         }
     }
 
@@ -554,6 +563,7 @@ public class PlayerController : MonoBehaviour
         if (!isOnGround)
         {
             float _xForce = (_newPosition.x - transform.position.x) / (Time.fixedDeltaTime / 1.75f);
+
             //if (Mathf.Sign(_xMovement) != Mathf.Sign(_xForce)) _xForce *= 1.5f;
 
             // If against a wall, create a sticky behaviour
@@ -570,12 +580,13 @@ public class PlayerController : MonoBehaviour
             {
                 if (rigidbody.velocity.x > _xForce)
                 {
-                    rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * 2, 0));
+                    // Coefficient => Old : 2 | New : 2.5
+                    rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * 2.5f, 0));
                 }
             }
             else if (rigidbody.velocity.x < _xForce)
             {
-                rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * 2, 0));
+                rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * 2.5f, 0));
             }
 
             return;
@@ -666,6 +677,25 @@ public class PlayerController : MonoBehaviour
     }
 
     /// <summary>
+    /// Stop the player from moving for a certain time amount.
+    /// </summary>
+    /// <param name="_time">Duration to stop the movement.</param>
+    /// <returns></returns>
+    public IEnumerator StopMove(float _time)
+    {
+        CanMove = false;
+
+        while(_time > 0)
+        {
+            yield return null;
+
+            _time -= Time.deltaTime;
+        }
+
+        CanMove = true;
+    }
+
+    /// <summary>
     /// Flips the character on the horizontal axis ; in other words, change the side he's looking.
     /// </summary>
     public void Flip()
@@ -729,6 +759,8 @@ public class PlayerController : MonoBehaviour
 
         // Adds initial force to jump
         rigidbody.velocity = new Vector2(rigidbody.velocity.x + (wallJumpForce.x * (againstWall == AgainstWall.Left ? -1 : 1)), (rigidbody.velocity.y * .25f) + wallJumpForce.y);
+
+        //StartCoroutine(StopMove(.2f));
 
         yield return null;
 
