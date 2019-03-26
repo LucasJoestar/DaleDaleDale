@@ -60,7 +60,7 @@ public class PlayerController : MonoBehaviour
      * 
      *  [CONTROLLER]
      *  
-     *      • Adjust air control.
+     *      • Polish the thing !
      *  
      *  [ACTIONS]
      *  
@@ -77,6 +77,16 @@ public class PlayerController : MonoBehaviour
 	 *	### MODIFICATIONS ###
 	 *	#####################
 	 *
+     *	Date :			[26 / 03 / 2019]
+	 *	Author :		[Guibert Lucas]
+	 *
+	 *	Changes :
+     *	
+     *	    • Implemented base animator movement related system.
+     *	Still got to fix jump & stick on wall ones.
+	 *
+	 *	-----------------------------------
+     * 
      *	Date :			[20 / 03 / 2019]
 	 *	Author :		[Guibert Lucas]
 	 *
@@ -272,31 +282,69 @@ public class PlayerController : MonoBehaviour
         {
             againstWall = value;
             chargedVelocity = 0;
+
+            if (value != AgainstWall.None)
+            {
+                // Flip if needed
+                if (((value == AgainstWall.Right) && isFacingRight) || ((value == AgainstWall.Left) && !isFacingRight)) Flip();
+
+                // Update animator state
+                SetAnim(AnimationState.StickOnWall);
+            }
+            else if (gravityState == GravityState.OnGround)
+            {
+                // Update animator state
+                SetAnim(AnimationState.OnGround);
+            }
         }
     }
 
+
+    /// <summary>Backing field for <see cref="GravityState"/>.</summary>
+    [SerializeField] private GravityState gravityState = GravityState.OnGround;
+
+    /// <summary>
+    /// Indicates the current gravity-related state of the player.
+    /// </summary>
+    public GravityState GravityState
+    {
+        get { return gravityState; }
+        private set
+        {
+            if (value == GravityState.OnGround)
+            {
+                speedCoef /= SPEED_CONSTRAINT_IN_AIR;
+
+                // Update animator state
+                SetAnim(AnimationState.OnGround);
+            }
+            else
+            {
+                if (gravityState == GravityState.OnGround)
+                {
+                    speedCoef *= SPEED_CONSTRAINT_IN_AIR;
+                }
+
+                if (value == GravityState.Ascending)
+                {
+                    // Update animator state
+                    SetAnim(AnimationState.Ascend);
+                }
+                else
+                {
+                    // Update animator state
+                    SetAnim(AnimationState.Fall);
+                }
+            }
+
+            gravityState = value;
+        }
+    }
 
     /// <summary>
     /// If true, the player is facing the right side of the screen ; otherwise, facing the left one.
     /// </summary>
     [SerializeField] private bool isFacingRight = true;
-
-    /// <summary>
-    /// Indicates if the player is currently on ground, or in the air.
-    /// </summary>
-    [SerializeField] private bool isOnGround = false;
-
-    public bool IsOnGround
-    {
-        get { return isOnGround; }
-        private set
-        {
-            isOnGround = value;
-
-            if (value) speedCoef /= SPEED_CONSTRAINT_IN_AIR;
-            else speedCoef *= SPEED_CONSTRAINT_IN_AIR;
-        }
-    }
 
     /// <summary>
     /// Indicates if the player can move. Yep, that's it.
@@ -315,7 +363,18 @@ public class PlayerController : MonoBehaviour
         private set
         {
             isRunning = value;
-            if (!value) speed = 0;
+            if (value)
+            {
+                // Update animator state
+                SetAnim(AnimationState.Run);
+            }
+            else
+            {
+                speed = 0;
+
+                // Update animator state
+                SetAnim(AnimationState.Idle);
+            }
         }
     }
 
@@ -419,7 +478,67 @@ public class PlayerController : MonoBehaviour
 
     #region Original Methods
 
-    #region Update
+    #region Animations
+    /// <summary>
+    /// Set player's animations.
+    /// This updates the player animator parameters.
+    /// </summary>
+    /// <param name="_state">New state of the player.</param>
+    public void SetAnim(AnimationState _state)
+    {
+        switch (_state)
+        {
+            case AnimationState.Idle:
+                animator.SetBool("IsRunning", false);
+                break;
+
+            case AnimationState.Run:
+                animator.SetBool("IsRunning", true);
+                break;
+
+            case AnimationState.OnGround:
+                animator.SetInteger("GroundState", 0);
+                break;
+
+            case AnimationState.Jump:
+                animator.SetTrigger("Jump");
+                break;
+
+            case AnimationState.Ascend:
+                animator.SetInteger("GroundState", 1);
+                break;
+
+            case AnimationState.Fall:
+                animator.SetInteger("GroundState", -1);
+                break;
+
+            case AnimationState.StickOnWall:
+                animator.SetInteger("GroundState", 2);
+                break;
+
+            case AnimationState.Die:
+                animator.SetTrigger("Die");
+                break;
+
+            default:
+                // Nothing to see here...
+                break;
+        }
+    }
+    #endregion
+
+    #region Health
+    /// <summary>
+    /// Makes the character die. And explode.
+    /// </summary>
+    public void Die()
+    {
+        // Update animator state
+        SetAnim(AnimationState.Die);
+    }
+    #endregion
+
+    #region Controller
     /// <summary>
     /// Checks the player inputs, and executes associated actions.
     /// </summary>
@@ -444,7 +563,7 @@ public class PlayerController : MonoBehaviour
         {
             // Flip the character if looking the opposite side of his movement
             // Do not move if against a wall on the movement direction
-            if ((isFacingRight && _horizontal < 0) || (!isFacingRight && _horizontal > 0)) Flip();
+            if ((isFacingRight && (againstWall != AgainstWall.Left) && _horizontal < 0) || (!isFacingRight && (againstWall != AgainstWall.Right) && _horizontal > 0)) Flip();
 
             if (againstWall == AgainstWall.None || ((againstWall == AgainstWall.Left) && _horizontal > 0) || ((againstWall == AgainstWall.Right) && _horizontal < 0))
             {
@@ -458,82 +577,6 @@ public class PlayerController : MonoBehaviour
             if (rigidbody.velocity.x != 0) rigidbody.velocity = new Vector2(rigidbody.velocity.x, rigidbody.velocity.y);
         }
     }
-
-    /// <summary>
-    /// Updates various states of the player.
-    /// </summary>
-    private void UpdateState()
-    {
-        /* Get if the player is on ground
-         * To do that, perform 3 raycast down from the collider bottom :
-         * one from center, one from left side and a last one from right side ;
-         * 
-         * If any of these touch something, then the player is on ground
-        */
-
-        // Get point at the bottom center of the collider
-        Vector2 _colliderPoint = new Vector2(transform.position.x + colliderCenter.x, transform.position.y + colliderCenter.y - colliderExtents.y);
-
-        // Raycast
-        if (!Raycast(_colliderPoint, Vector2.down, .05f) &&
-            !Raycast(new Vector2(_colliderPoint.x + colliderExtents.x - .001f, _colliderPoint.y), Vector2.down, .05f) &&
-            !Raycast(new Vector2(_colliderPoint.x - colliderExtents.x + .001f, _colliderPoint.y), Vector2.down, .05f))
-        {
-            // If nothing is hit, player is not on ground
-            if (isOnGround) IsOnGround = false;
-        }
-        else if (!isOnGround)
-        {
-            IsOnGround = true;
-            if (rigidbody.velocity.x != 0) rigidbody.velocity *= .1f;
-        }
-
-        /* Now, get if the player is against a wall
-         * To do so, that's the same than the ground check, except that
-         * we have to check for left & right sides instead of bottom.
-         * 
-         * If player is against a wall on left side, don't raycast for right
-        */
-        _colliderPoint = new Vector2(transform.position.x + colliderCenter.x - colliderExtents.x, transform.position.y + colliderCenter.y);
-
-        // Raycast for left side
-        if (!Raycast(_colliderPoint, Vector2.left, .025f) &&
-            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + colliderExtents.y), Vector2.left, .025f) &&
-            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - colliderExtents.y), Vector2.left, .025f))
-        {
-            // If not against a wall on left side,
-            // raycast for right side
-            _colliderPoint = new Vector2(_colliderPoint.x + (colliderExtents.x * 2), _colliderPoint.y);
-
-            if (!Raycast(_colliderPoint, Vector2.right, .025f) &&
-                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + colliderExtents.y), Vector2.right, .025f) &&
-                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - colliderExtents.y), Vector2.right, .025f))
-            {
-                // Well, player is not against a wall then ; update variable if needed
-                if (againstWall != AgainstWall.None)
-                {
-                    AgainstWall = AgainstWall.None;
-                }
-            }
-            // If on against a wall on right side, update variable if needed
-            else if (againstWall != AgainstWall.Right)
-            {
-                AgainstWall = AgainstWall.Right;
-            }
-        }
-        // If on against a wall on left side, update variable if needed
-        else if (againstWall != AgainstWall.Left)
-        {
-            AgainstWall = AgainstWall.Left;
-        }
-    }
-
-    /// <summary>
-    /// Raycast down a given point and get if something was touched.
-    /// </summary>
-    /// <param name="_point">Position from where to start raycast (in world space).</param>
-    /// <returns>Return true if something was touched, false otherwise.</returns>
-    private bool Raycast(Vector2 _point, Vector2 _direction, float _distance) { return Physics2D.Raycast(_point, _direction, _distance, whatIsObstacle).collider != null; }
     #endregion
 
     #region Movements
@@ -553,14 +596,14 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        if (!isRunning) isRunning = true;
+        if (!isRunning) IsRunning = true;
 
         // Get the new position of the character
         Vector2 _newPosition = Vector2.Lerp(transform.position, new Vector2(transform.position.x + _xMovement, transform.position.y), Time.fixedDeltaTime * speed * speedCoef);
 
         // If in the air and moving in the opposite direction
         // of the rigidbody velocity, add opposite force
-        if (!isOnGround)
+        if (gravityState != GravityState.OnGround)
         {
             float _xForce = (_newPosition.x - transform.position.x) / (Time.fixedDeltaTime / 1.75f);
 
@@ -668,7 +711,7 @@ public class PlayerController : MonoBehaviour
 
             transform.position = new Vector3(_xColliderEdge - ((colliderCenter.x + colliderExtents.x) * isFacingRight.Sign()), transform.position.y);
 
-            if (!isRunning) isRunning = true;
+            if (!isRunning) IsRunning = true;
         }
         else if (isRunning)
         {
@@ -709,7 +752,7 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     public void Jump()
     {
-        if (isOnGround) StartCoroutine(HighJump());
+        if (gravityState == GravityState.OnGround) StartCoroutine(HighJump());
         else if (againstWall != AgainstWall.None) StartCoroutine(WallJump());
     }
 
@@ -731,6 +774,9 @@ public class PlayerController : MonoBehaviour
         {
             rigidbody.velocity = new Vector2(rigidbody.velocity.x, jumpForce);
         }
+
+        // Update animator state
+        SetAnim(AnimationState.Jump);
 
         yield return null;
 
@@ -761,6 +807,9 @@ public class PlayerController : MonoBehaviour
         rigidbody.velocity = new Vector2(rigidbody.velocity.x + (wallJumpForce.x * (againstWall == AgainstWall.Left ? -1 : 1)), (rigidbody.velocity.y * .25f) + wallJumpForce.y);
 
         //StartCoroutine(StopMove(.2f));
+
+        // Update animator state
+        SetAnim(AnimationState.Jump);
 
         yield return null;
 
@@ -809,14 +858,97 @@ public class PlayerController : MonoBehaviour
     }
     #endregion
 
-    #region Health
+    #region Update
     /// <summary>
-    /// Makes the character die. And explode.
+    /// Updates various states of the player.
     /// </summary>
-    public void Die()
+    private void UpdateState()
     {
+        /* Get if the player is on ground
+         * To do that, perform 3 raycast down from the collider bottom :
+         * one from center, one from left side and a last one from right side ;
+         * 
+         * If any of these touch something, then the player is on ground
+        */
 
+        // Get point at the bottom center of the collider
+        Vector2 _colliderPoint = new Vector2(transform.position.x + colliderCenter.x, transform.position.y + colliderCenter.y - colliderExtents.y);
+
+        // Raycast
+        if (!Raycast(_colliderPoint, Vector2.down, .05f) &&
+            !Raycast(new Vector2(_colliderPoint.x + colliderExtents.x - .001f, _colliderPoint.y), Vector2.down, .05f) &&
+            !Raycast(new Vector2(_colliderPoint.x - colliderExtents.x + .001f, _colliderPoint.y), Vector2.down, .05f))
+        {
+            // If nothing is hit, player is not on ground
+            if (rigidbody.velocity.y > 0)
+            {
+                if (gravityState != GravityState.Ascending) GravityState = GravityState.Ascending;
+            }
+            else if (gravityState != GravityState.Falling)
+            {
+                GravityState = GravityState.Falling;
+            }
+        }
+        else if (gravityState != GravityState.OnGround)
+        {
+            GravityState = GravityState.OnGround;
+            if (rigidbody.velocity.x != 0) rigidbody.velocity *= .1f;
+        }
+
+        /* Now, get if the player is against a wall
+         * To do so, that's the same than the ground check, except that
+         * we have to check for left & right sides instead of bottom.
+         * 
+         * If player is against a wall on left side, don't raycast for right
+        */
+
+        // If on ground, player is not against a wall
+        if (gravityState == GravityState.OnGround)
+        {
+            if (againstWall != AgainstWall.None) AgainstWall = AgainstWall.None;
+            return;
+        }
+
+        _colliderPoint = new Vector2(transform.position.x + colliderCenter.x - colliderExtents.x, transform.position.y + colliderCenter.y);
+
+        // Raycast for left side
+        if (!Raycast(_colliderPoint, Vector2.left, .025f) &&
+            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + colliderExtents.y), Vector2.left, .025f) &&
+            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - colliderExtents.y), Vector2.left, .025f))
+        {
+            // If not against a wall on left side,
+            // raycast for right side
+            _colliderPoint = new Vector2(_colliderPoint.x + (colliderExtents.x * 2), _colliderPoint.y);
+
+            if (!Raycast(_colliderPoint, Vector2.right, .025f) &&
+                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + colliderExtents.y), Vector2.right, .025f) &&
+                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - colliderExtents.y), Vector2.right, .025f))
+            {
+                // Well, player is not against a wall then ; update variable if needed
+                if (againstWall != AgainstWall.None)
+                {
+                    AgainstWall = AgainstWall.None;
+                }
+            }
+            // If on against a wall on right side, update variable if needed
+            else if (againstWall != AgainstWall.Right)
+            {
+                AgainstWall = AgainstWall.Right;
+            }
+        }
+        // If on against a wall on left side, update variable if needed
+        else if (againstWall != AgainstWall.Left)
+        {
+            AgainstWall = AgainstWall.Left;
+        }
     }
+
+    /// <summary>
+    /// Raycast down a given point and get if something was touched.
+    /// </summary>
+    /// <param name="_point">Position from where to start raycast (in world space).</param>
+    /// <returns>Return true if something was touched, false otherwise.</returns>
+    private bool Raycast(Vector2 _point, Vector2 _direction, float _distance) { return Physics2D.Raycast(_point, _direction, _distance, whatIsObstacle).collider != null; }
     #endregion
 
     #endregion
@@ -891,7 +1023,7 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         // Set speed coef at start
-        if (isOnGround) speedCoef = 1;
+        if (gravityState == GravityState.OnGround) speedCoef = 1;
         else speedCoef = SPEED_CONSTRAINT_IN_AIR;
 
         // Get collider bounds at start
@@ -924,6 +1056,22 @@ public enum AgainstWall
 }
 
 /// <summary>
+/// Used to set the player animation state,
+/// using animator parameters.
+/// </summary>
+public enum AnimationState
+{
+    Idle,
+    Run,
+    OnGround,
+    Jump,
+    Ascend,
+    Fall,
+    StickOnWall,
+    Die
+}
+
+/// <summary>
 /// Used to know if a player is currently charging an action, and if so,
 /// which action is it.
 /// </summary>
@@ -943,4 +1091,14 @@ public enum ChargingActionState
     Loaded,
     Concentrate,
     Ultra
+}
+
+/// <summary>
+/// Picture the gravity-related state of an object.
+/// </summary>
+public enum GravityState
+{
+    Falling = -1,
+    OnGround,
+    Ascending
 }
