@@ -67,7 +67,7 @@ public class PlayerController : MonoBehaviour
      *      • Implement the grenade with load, throw, explosions, death & everything that
      *  goes with it.
      *  
-     *      • Implement the bat with load & repulse.
+     *      • Implement that bat with load & repulse.
      * 
      *  [OTHERS]
      * 
@@ -77,6 +77,15 @@ public class PlayerController : MonoBehaviour
 	 *	### MODIFICATIONS ###
 	 *	#####################
 	 *
+     *	Date :			[28 / 03 / 2019]
+	 *	Author :		[Guibert Lucas]
+	 *
+	 *	Changes :
+     *	
+     *	    • Fixed issues in animations, and ground state.
+	 *
+	 *	-----------------------------------
+     * 
      *	Date :			[26 / 03 / 2019]
 	 *	Author :		[Guibert Lucas]
 	 *
@@ -203,54 +212,54 @@ public class PlayerController : MonoBehaviour
     /// When getting off ground, speed coefficient is multiplied by this.
     /// Conversely, when getting on ground it is divided by this.
     /// </summary>
-    private const float SPEED_CONSTRAINT_IN_AIR = 1.125f;
+    private const float                                         SPEED_CONSTRAINT_IN_AIR =               1.125f;
 
     /// <summary>
     /// Value used to get a sticky behaviour when against a wall in air.
     /// Player moving in this situation will accumulate velocity in X, and only move
     /// when this velocity will exceed the present value.
     /// </summary>
-    private const int STICKY_BEHAVIOUR_VELOCITY = 200;
+    private const int                                           STICKY_BEHAVIOUR_VELOCITY =             200;
     #endregion
 
     #region Components & References
     /// <summary>
     /// Animator of the player, used to play all its animations, like running, dying, etc...
     /// </summary>
-    [SerializeField] private Animator animator = null;
+    [SerializeField] private Animator                           animator =                              null;
 
     /// <summary>
     /// Player box collider, used to detect collisions & physic detections
     /// </summary>
-    [SerializeField] private new BoxCollider2D collider = null;
+    [SerializeField] private new BoxCollider2D                  collider =                              null;
 
     /// <summary>
     /// Player rigidbody, used to give him velcity for jump, explosion recoil, etc...
     /// </summary>
-    [SerializeField] private new Rigidbody2D rigidbody = null;
+    [SerializeField] private new Rigidbody2D                    rigidbody =                             null;
     #endregion
 
     #region Parameters
     /// <summary>
     /// Determines what is an obstacle, and what is not.
     /// </summary>
-    [SerializeField] private LayerMask whatIsObstacle = new LayerMask();
+    [SerializeField] private LayerMask                          whatIsObstacle =                        new LayerMask();
 
     /// <summary>
     /// All grenades the player is carrying on.
     /// </summary>
-    [SerializeField] private Dictionary<GrenadeType, int> grenades = new Dictionary<GrenadeType, int>()
+    [SerializeField] private Dictionary<GrenadeType, int>       grenades =                              new Dictionary<GrenadeType, int>()
     {
         { GrenadeType.Classic, 3 }, { GrenadeType.Bouncing, 0 }, { GrenadeType.Sticky, 0 }
     };
 
     /// <summary>Backing field for <see cref="SelectedGrenade"/>.</summary>
-    [SerializeField] private GrenadeType selectedGrenade = GrenadeType.Classic;
+    [SerializeField] private GrenadeType                        selectedGrenade =                       GrenadeType.Classic;
 
     /// <summary>
     /// The actual grenade type selected by the player.
     /// </summary>
-    public GrenadeType SelectedGrenade
+    public GrenadeType                                          SelectedGrenade
     {
         get { return selectedGrenade; }
         private set
@@ -262,20 +271,20 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// The currently charging action of the player.
     /// </summary>
-    [SerializeField] private ChargingAction chargingAction = ChargingAction.None;
+    [SerializeField] private ChargingAction                     chargingAction =                        ChargingAction.None;
 
     /// <summary>
     /// The state of the current charging action of the player.
     /// </summary>
-    [SerializeField] private ChargingActionState chargingActionState = ChargingActionState.Basic;
+    [SerializeField] private ChargingActionState                chargingActionState =                   ChargingActionState.Basic;
 
     /// <summary>Backing field for <see cref="AgainstWall"/>.</summary>
-    [SerializeField] private AgainstWall againstWall = AgainstWall.None;
+    [SerializeField] private AgainstWall                        againstWall =                           AgainstWall.None;
 
     /// <summary>
     /// Indicates if the player is against a wall, and if so at which side of him it is.
     /// </summary>
-    public AgainstWall AgainstWall
+    public AgainstWall                                          AgainstWall
     {
         get { return againstWall; }
         private set
@@ -291,17 +300,17 @@ public class PlayerController : MonoBehaviour
                 // Update animator state
                 SetAnim(AnimationState.StickOnWall);
             }
-            else if (gravityState == GravityState.OnGround)
+            else
             {
                 // Update animator state
-                SetAnim(AnimationState.OnGround);
+                SetAnim(AnimationState.OutOfWall);
             }
         }
     }
 
 
     /// <summary>Backing field for <see cref="GravityState"/>.</summary>
-    [SerializeField] private GravityState gravityState = GravityState.OnGround;
+    [SerializeField] private GravityState                       gravityState =                          GravityState.OnGround;
 
     /// <summary>
     /// Indicates the current gravity-related state of the player.
@@ -344,15 +353,15 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// If true, the player is facing the right side of the screen ; otherwise, facing the left one.
     /// </summary>
-    [SerializeField] private bool isFacingRight = true;
+    [SerializeField] private bool                               isFacingRight =                         true;
 
     /// <summary>
     /// Indicates if the player can move. Yep, that's it.
     /// </summary>
-    public bool CanMove = true;
+    public bool                                                 CanMove =                               true;
 
     /// <summary>Backing field for <see cref="IsRunning"/>.</summary>
-    [SerializeField] private bool isRunning = false;
+    [SerializeField] private bool                               isRunning =                             false;
 
     /// <summary>
     /// Indicates if the player is currently running.
@@ -381,95 +390,101 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// If in animation, the player must wait to exit it before starting another action.
     /// </summary>
-    [SerializeField] private bool isInAnimation = false;
+    [SerializeField] private bool                               isInAnimation =                         false;
 
 
     /// <summary>
     /// Current speed of the player movements.
     /// </summary>
-    [SerializeField] private float speed = 0;
+    [SerializeField] private float                              speed =                                 0;
 
     /// <summary>
     /// Maximum speed of the player movements.
     /// </summary>
-    [SerializeField] private float maxSpeed = 2;
+    [SerializeField] private float                              maxSpeed =                              2;
 
     /// <summary>
     /// Coefficient used to multiple player speed by.
     /// </summary>
-    [SerializeField] private float speedCoef = 1;
+    [SerializeField] private float                              speedCoef =                             1;
 
     /// <summary>
     /// Initial speed of the player movements when starting moving.
     /// </summary>
-    [SerializeField] private float initialSpeed = 1;
+    [SerializeField] private float                              initialSpeed =                          1;
 
     /// <summary>
     /// Time it take for the player when starting moving to reach his maximum speed.
     /// </summary>
-    [SerializeField] private float speedIncreaseDuration = .5f;
+    [SerializeField] private float                              speedIncreaseDuration =                 .5f;
 
 
     /// <summary>
     /// Y velocity added to the player when performing a standard jumping.
     /// </summary>
-    [SerializeField] private float jumpForce = 10;
+    [SerializeField] private float                              jumpForce =                             10;
 
     /// <summary>
     /// Y velocity added the player after a standard jump
     /// while jumping & holding the jump button.
     /// </summary>
-    [SerializeField] private float jumpForceInDuration = .25f;
+    [SerializeField] private float                              jumpForceInDuration =                   .25f;
 
     /// <summary>
     /// Maximum duration of a standard jump.
     /// </summary>
-    [SerializeField] private float jumpMaxDuration = 1;
+    [SerializeField] private float                              jumpMaxDuration =                       1;
 
     /// <summary>
     /// Force added the player when performing a wall jump.
     /// </summary>
-    [SerializeField] private Vector2 wallJumpForce = new Vector2(-2, 1);
+    [SerializeField] private Vector2                            wallJumpForce =                         new Vector2(-2, 1);
 
     /// <summary>
     /// Y velocity added the player after a wall jump
     /// while jumping & holding the jump button.
     /// </summary>
-    [SerializeField] private float wallJumpForceInDuration = .25f;
+    [SerializeField] private float                              wallJumpForceInDuration =               .25f;
 
     /// <summary>
     /// Maximum duration of a wall jump.
     /// </summary>
-    [SerializeField] private float wallJumpMaxDuration = .5f;
+    [SerializeField] private float                              wallJumpMaxDuration =                   .5f;
 
     /// <summary>
     /// Stacked velocity when against a wall before moving, to make the character sticky.
     /// </summary>
-    [SerializeField] private float chargedVelocity = 0;
+    [SerializeField] private float                              chargedVelocity =                       0;
     #endregion
 
     #region Inputs
     /// <summary>
     /// Input name for the horizontal axis. Used to move the character on the X axis.
     /// </summary>
-    public string HorizontalAxis = "Horizontal";
+    public string                                               HorizontalAxis =                        "Horizontal";
 
     /// <summary>
     /// Input name for the button used to perform a jump.
     /// </summary>
-    public string JumpButton = "Jump";
+    public string                                               JumpButton =                            "Jump";
     #endregion
 
     #region Help & Memory
     /// <summary>
     /// Center point of the collider (in local space).
     /// </summary>
-    private Vector3 colliderCenter = Vector3.zero;
+    public Vector3                                              ColliderCenter
+    {
+        get { return collider.bounds.center - transform.position; }
+    }
 
     /// <summary>
     /// Extents of the collider (in world space).
     /// </summary>
-    private Vector2 colliderExtents = Vector2.one;
+    public Vector2                                              ColliderExtents
+    {
+        get { return (Vector2)collider.bounds.extents - new Vector2(.001f, .001f); }
+    }
     #endregion
 
     #endregion
@@ -513,7 +528,11 @@ public class PlayerController : MonoBehaviour
                 break;
 
             case AnimationState.StickOnWall:
-                animator.SetInteger("GroundState", 2);
+                animator.SetBool("IsStickOnWall", true);
+                break;
+
+            case AnimationState.OutOfWall:
+                animator.SetBool("IsStickOnWall", false);
                 break;
 
             case AnimationState.Die:
@@ -656,10 +675,10 @@ public class PlayerController : MonoBehaviour
         Vector2 _direction = isFacingRight ? Vector2.right : Vector2.left;
         float _distance = Mathf.Abs(_newPosition.x - transform.position.x);
 
-        Vector2 _colliderRight = new Vector2(transform.position.x + ((colliderCenter.x + colliderExtents.x) * isFacingRight.Sign()), transform.position.y + colliderCenter.y);
+        Vector2 _colliderRight = new Vector2(transform.position.x + ((ColliderCenter.x + ColliderExtents.x) * isFacingRight.Sign()), transform.position.y + ColliderCenter.y);
 
         // Bottom raycast
-        _hit = Physics2D.Raycast(new Vector2(_colliderRight.x, _colliderRight.y - colliderExtents.y), _direction, _distance, whatIsObstacle);
+        _hit = Physics2D.Raycast(new Vector2(_colliderRight.x, _colliderRight.y - ColliderExtents.y), _direction, _distance, whatIsObstacle);
 
         if (_hit.collider != null)
         {
@@ -671,7 +690,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // Top raycast
-        _hit = Physics2D.Raycast(new Vector2(_colliderRight.x, _colliderRight.y + colliderExtents.y), _direction, _distance, whatIsObstacle);
+        _hit = Physics2D.Raycast(new Vector2(_colliderRight.x, _colliderRight.y + ColliderExtents.y), _direction, _distance, whatIsObstacle);
 
         if (_hit.collider != null)
         {
@@ -709,7 +728,7 @@ public class PlayerController : MonoBehaviour
         {
             float _xColliderEdge = _hit.collider.bounds.center.x - (_hit.collider.bounds.extents.x * isFacingRight.Sign());
 
-            transform.position = new Vector3(_xColliderEdge - ((colliderCenter.x + colliderExtents.x) * isFacingRight.Sign()), transform.position.y);
+            transform.position = new Vector3(_xColliderEdge - ((ColliderCenter.x + ColliderExtents.x) * isFacingRight.Sign()), transform.position.y);
 
             if (!isRunning) IsRunning = true;
         }
@@ -826,16 +845,6 @@ public class PlayerController : MonoBehaviour
 
         yield break;
     }
-
-    /// <summary>
-    /// Get collider center, max and min points in local space, and update
-    /// local variables values on them.
-    /// </summary>
-    public void UpdateColliderBounds()
-    {
-        colliderCenter = collider.bounds.center - transform.position;
-        colliderExtents = (Vector2)collider.bounds.extents - new Vector2(.001f, .001f);
-    }
     #endregion
 
     #region Actions & Attacks
@@ -872,24 +881,24 @@ public class PlayerController : MonoBehaviour
         */
 
         // Get point at the bottom center of the collider
-        Vector2 _colliderPoint = new Vector2(transform.position.x + colliderCenter.x, transform.position.y + colliderCenter.y - colliderExtents.y);
+        Vector2 _colliderPoint = new Vector2(transform.position.x + ColliderCenter.x, transform.position.y + ColliderCenter.y - ColliderExtents.y);
 
         // Raycast
         if (!Raycast(_colliderPoint, Vector2.down, .05f) &&
-            !Raycast(new Vector2(_colliderPoint.x + colliderExtents.x - .001f, _colliderPoint.y), Vector2.down, .05f) &&
-            !Raycast(new Vector2(_colliderPoint.x - colliderExtents.x + .001f, _colliderPoint.y), Vector2.down, .05f))
+            !Raycast(new Vector2(_colliderPoint.x + ColliderExtents.x - .001f, _colliderPoint.y), Vector2.down, .05f) &&
+            !Raycast(new Vector2(_colliderPoint.x - ColliderExtents.x + .001f, _colliderPoint.y), Vector2.down, .05f))
         {
             // If nothing is hit, player is not on ground
             if (rigidbody.velocity.y > 0)
             {
                 if (gravityState != GravityState.Ascending) GravityState = GravityState.Ascending;
             }
-            else if (gravityState != GravityState.Falling)
+            else if ((rigidbody.velocity.y < 0) && (gravityState != GravityState.Falling))
             {
                 GravityState = GravityState.Falling;
             }
         }
-        else if (gravityState != GravityState.OnGround)
+        else if ((gravityState != GravityState.OnGround) && (rigidbody.velocity.y == 0))
         {
             GravityState = GravityState.OnGround;
             if (rigidbody.velocity.x != 0) rigidbody.velocity *= .1f;
@@ -909,20 +918,20 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        _colliderPoint = new Vector2(transform.position.x + colliderCenter.x - colliderExtents.x, transform.position.y + colliderCenter.y);
+        _colliderPoint = new Vector2(transform.position.x + ColliderCenter.x - ColliderExtents.x, transform.position.y + ColliderCenter.y);
 
         // Raycast for left side
         if (!Raycast(_colliderPoint, Vector2.left, .025f) &&
-            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + colliderExtents.y), Vector2.left, .025f) &&
-            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - colliderExtents.y), Vector2.left, .025f))
+            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + ColliderExtents.y), Vector2.left, .025f) &&
+            !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - ColliderExtents.y), Vector2.left, .025f))
         {
             // If not against a wall on left side,
             // raycast for right side
-            _colliderPoint = new Vector2(_colliderPoint.x + (colliderExtents.x * 2), _colliderPoint.y);
+            _colliderPoint = new Vector2(_colliderPoint.x + (ColliderExtents.x * 2), _colliderPoint.y);
 
             if (!Raycast(_colliderPoint, Vector2.right, .025f) &&
-                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + colliderExtents.y), Vector2.right, .025f) &&
-                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - colliderExtents.y), Vector2.right, .025f))
+                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y + ColliderExtents.y), Vector2.right, .025f) &&
+                !Raycast(new Vector2(_colliderPoint.x, _colliderPoint.y - ColliderExtents.y), Vector2.right, .025f))
             {
                 // Well, player is not against a wall then ; update variable if needed
                 if (againstWall != AgainstWall.None)
@@ -1006,15 +1015,15 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x + colliderExtents.x, transform.position.y + colliderCenter.y + colliderExtents.y), .1f);
-                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x + colliderExtents.x, transform.position.y + colliderCenter.y), .1f);
-                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x + colliderExtents.x, transform.position.y + colliderCenter.y - colliderExtents.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + ColliderCenter.x + ColliderExtents.x, transform.position.y + ColliderCenter.y + ColliderExtents.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + ColliderCenter.x + ColliderExtents.x, transform.position.y + ColliderCenter.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + ColliderCenter.x + ColliderExtents.x, transform.position.y + ColliderCenter.y - ColliderExtents.y), .1f);
 
-                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x - colliderExtents.x, transform.position.y + colliderCenter.y + colliderExtents.y), .1f);
-                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x, transform.position.y + colliderCenter.y + colliderExtents.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + ColliderCenter.x - ColliderExtents.x, transform.position.y + ColliderCenter.y + ColliderExtents.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + ColliderCenter.x, transform.position.y + ColliderCenter.y + ColliderExtents.y), .1f);
 
-                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x - colliderExtents.x, transform.position.y + colliderCenter.y - colliderExtents.y), .1f);
-                Gizmos.DrawSphere(new Vector2(transform.position.x + colliderCenter.x, transform.position.y + colliderCenter.y - colliderExtents.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + ColliderCenter.x - ColliderExtents.x, transform.position.y + ColliderCenter.y - ColliderExtents.y), .1f);
+                Gizmos.DrawSphere(new Vector2(transform.position.x + ColliderCenter.x, transform.position.y + ColliderCenter.y - ColliderExtents.y), .1f);
             }
         }
     }
@@ -1025,9 +1034,6 @@ public class PlayerController : MonoBehaviour
         // Set speed coef at start
         if (gravityState == GravityState.OnGround) speedCoef = 1;
         else speedCoef = SPEED_CONSTRAINT_IN_AIR;
-
-        // Get collider bounds at start
-        UpdateColliderBounds();
     }
 	
 	// Update is called once per frame
@@ -1068,6 +1074,7 @@ public enum AnimationState
     Ascend,
     Fall,
     StickOnWall,
+    OutOfWall,
     Die
 }
 

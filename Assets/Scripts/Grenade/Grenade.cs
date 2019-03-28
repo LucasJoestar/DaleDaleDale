@@ -46,22 +46,22 @@ public class Grenade : MonoBehaviour
     /// <summary>
     /// Animator of the grenade, to play different animations like explosion, blink and others.
     /// </summary>
-    [SerializeField] protected Animator animator = null;
+    [SerializeField] protected Animator                     animator =                      null;
 
     /// <summary>
     /// 2D Rigidbody of the grenade, used to infuse velocity in it.
     /// </summary>
-    [SerializeField] protected new Rigidbody2D rigidbody2D = null;
+    [SerializeField] protected new Rigidbody2D              rigidbody2D =                   null;
 
     /// <summary>
     /// Radius of the circle from the center of the explosion, where it should deal absolutly incredible explosive damages.
     /// </summary>
-    [SerializeField] protected float coreExplosionRadius = .1f;
+    [SerializeField] protected float                        coreExplosionRadius =           .1f;
 
     /// <summary>
     /// Radius of the circle from the center of the explosion, where the explosion should just destroy things.
     /// </summary>
-    [SerializeField] protected float mainExplosionRadius = 2.5f;
+    [SerializeField] protected float                        mainExplosionRadius =           2.5f;
     #endregion
 
     #region Methods
