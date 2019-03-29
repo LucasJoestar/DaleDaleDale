@@ -60,7 +60,7 @@ public class PlayerController : MonoBehaviour
      * 
      *  [CONTROLLER]
      *  
-     *      • Polish the thing !
+     *      • Polish the thing ! In need to adjust air speed increase => line 641
      *  
      *  [ACTIONS]
      *  
@@ -592,8 +592,8 @@ public class PlayerController : MonoBehaviour
         else if (isRunning)
         {
             IsRunning = false;
-            // Change Velocity => Old : x * .25f | New : the same
-            if (rigidbody.velocity.x != 0) rigidbody.velocity = new Vector2(rigidbody.velocity.x, rigidbody.velocity.y);
+            // Change Velocity => Old : x * .25f | New : 0
+            if (rigidbody.velocity.x != 0) rigidbody.velocity = new Vector2(0, rigidbody.velocity.y);
         }
     }
     #endregion
@@ -624,7 +624,7 @@ public class PlayerController : MonoBehaviour
         // of the rigidbody velocity, add opposite force
         if (gravityState != GravityState.OnGround)
         {
-            float _xForce = (_newPosition.x - transform.position.x) / (Time.fixedDeltaTime / 1.75f);
+            float _xForce = (_newPosition.x - transform.position.x) / (Time.fixedDeltaTime);
 
             //if (Mathf.Sign(_xMovement) != Mathf.Sign(_xForce)) _xForce *= 1.5f;
 
@@ -638,17 +638,19 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
+            Debug.Log("Velocity X => " + rigidbody.velocity.x + " | X Force => " + _xForce);
+
             if ((_xMovement < 0))
             {
                 if (rigidbody.velocity.x > _xForce)
                 {
-                    // Coefficient => Old : 2 | New : 2.5
-                    rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * 2.5f, 0));
+                    // Coefficient => Old : 2.5f | New : speed / 3
+                    rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * (speed / 3), 0));
                 }
             }
             else if (rigidbody.velocity.x < _xForce)
             {
-                rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * 2.5f, 0));
+                rigidbody.AddForce(new Vector2((_xForce - rigidbody.velocity.x) * (speed / 3), 0));
             }
 
             return;
@@ -787,7 +789,7 @@ public class PlayerController : MonoBehaviour
         // Adds initial force to jump
         if (speed != 0)
         {
-            rigidbody.velocity = new Vector2(rigidbody.velocity.x + (isFacingRight.Sign() * 5), jumpForce);
+            rigidbody.velocity = new Vector2(rigidbody.velocity.x + (isFacingRight.Sign() * 10), jumpForce);
         }
         else
         {
@@ -829,6 +831,9 @@ public class PlayerController : MonoBehaviour
 
         // Update animator state
         SetAnim(AnimationState.Jump);
+
+        // Stop the player from moving for a very short time
+        StartCoroutine(StopMove(.05f));
 
         yield return null;
 
