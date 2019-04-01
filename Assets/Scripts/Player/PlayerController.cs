@@ -212,49 +212,54 @@ public class PlayerController : MonoBehaviour
     /// When getting off ground, speed coefficient is multiplied by this.
     /// Conversely, when getting on ground it is divided by this.
     /// </summary>
-    private const float                                         SPEED_CONSTRAINT_IN_AIR =               1.125f;
+    private const float                                         SPEED_CONSTRAINT_IN_AIR                 = 1.125f;
 
     /// <summary>
     /// Value used to get a sticky behaviour when against a wall in air.
     /// Player moving in this situation will accumulate velocity in X, and only move
     /// when this velocity will exceed the present value.
     /// </summary>
-    private const int                                           STICKY_BEHAVIOUR_VELOCITY =             200;
+    private const int                                           STICKY_BEHAVIOUR_VELOCITY               = 100;
+
+    /// <summary>
+    /// Time during which the player cannot move after performing a wall jump.
+    /// </summary>
+    private const float                                         STOP_MOVE_TIME_AFTER_WALL_JUMP          = .05f;
     #endregion
 
     #region Components & References
     /// <summary>
     /// Animator of the player, used to play all its animations, like running, dying, etc...
     /// </summary>
-    [SerializeField] private Animator                           animator =                              null;
+    [SerializeField] private Animator                           animator                                = null;
 
     /// <summary>
     /// Player box collider, used to detect collisions & physic detections
     /// </summary>
-    [SerializeField] private new BoxCollider2D                  collider =                              null;
+    [SerializeField] private new BoxCollider2D                  collider                                = null;
 
     /// <summary>
     /// Player rigidbody, used to give him velcity for jump, explosion recoil, etc...
     /// </summary>
-    [SerializeField] private new Rigidbody2D                    rigidbody =                             null;
+    [SerializeField] private new Rigidbody2D                    rigidbody                               = null;
     #endregion
 
     #region Parameters
     /// <summary>
     /// Determines what is an obstacle, and what is not.
     /// </summary>
-    [SerializeField] private LayerMask                          whatIsObstacle =                        new LayerMask();
+    [SerializeField] private LayerMask                          whatIsObstacle                          = new LayerMask();
 
     /// <summary>
     /// All grenades the player is carrying on.
     /// </summary>
-    [SerializeField] private Dictionary<GrenadeType, int>       grenades =                              new Dictionary<GrenadeType, int>()
+    [SerializeField] private Dictionary<GrenadeType, int>       grenades                                = new Dictionary<GrenadeType, int>()
     {
         { GrenadeType.Classic, 3 }, { GrenadeType.Bouncing, 0 }, { GrenadeType.Sticky, 0 }
     };
 
     /// <summary>Backing field for <see cref="SelectedGrenade"/>.</summary>
-    [SerializeField] private GrenadeType                        selectedGrenade =                       GrenadeType.Classic;
+    [SerializeField] private GrenadeType                        selectedGrenade                         = GrenadeType.Classic;
 
     /// <summary>
     /// The actual grenade type selected by the player.
@@ -271,15 +276,15 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// The currently charging action of the player.
     /// </summary>
-    [SerializeField] private ChargingAction                     chargingAction =                        ChargingAction.None;
+    [SerializeField] private ChargingAction                     chargingAction                          = ChargingAction.None;
 
     /// <summary>
     /// The state of the current charging action of the player.
     /// </summary>
-    [SerializeField] private ChargingActionState                chargingActionState =                   ChargingActionState.Basic;
+    [SerializeField] private ChargingActionState                chargingActionState                     = ChargingActionState.Basic;
 
     /// <summary>Backing field for <see cref="AgainstWall"/>.</summary>
-    [SerializeField] private AgainstWall                        againstWall =                           AgainstWall.None;
+    [SerializeField] private AgainstWall                        againstWall                             = AgainstWall.None;
 
     /// <summary>
     /// Indicates if the player is against a wall, and if so at which side of him it is.
@@ -310,7 +315,7 @@ public class PlayerController : MonoBehaviour
 
 
     /// <summary>Backing field for <see cref="GravityState"/>.</summary>
-    [SerializeField] private GravityState                       gravityState =                          GravityState.OnGround;
+    [SerializeField] private GravityState                       gravityState                            = GravityState.OnGround;
 
     /// <summary>
     /// Indicates the current gravity-related state of the player.
@@ -353,15 +358,15 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// If true, the player is facing the right side of the screen ; otherwise, facing the left one.
     /// </summary>
-    [SerializeField] private bool                               isFacingRight =                         true;
+    [SerializeField] private bool                               isFacingRight                           = true;
 
     /// <summary>
     /// Indicates if the player can move. Yep, that's it.
     /// </summary>
-    public bool                                                 CanMove =                               true;
+    public bool                                                 CanMove                                 = true;
 
     /// <summary>Backing field for <see cref="IsRunning"/>.</summary>
-    [SerializeField] private bool                               isRunning =                             false;
+    [SerializeField] private bool                               isRunning                               = false;
 
     /// <summary>
     /// Indicates if the player is currently running.
@@ -390,83 +395,83 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// If in animation, the player must wait to exit it before starting another action.
     /// </summary>
-    [SerializeField] private bool                               isInAnimation =                         false;
+    [SerializeField] private bool                               isInAnimation                           = false;
 
 
     /// <summary>
     /// Current speed of the player movements.
     /// </summary>
-    [SerializeField] private float                              speed =                                 0;
+    [SerializeField] private float                              speed                                   = 0;
 
     /// <summary>
     /// Maximum speed of the player movements.
     /// </summary>
-    [SerializeField] private float                              maxSpeed =                              2;
+    [SerializeField] private float                              maxSpeed                                = 2;
 
     /// <summary>
     /// Coefficient used to multiple player speed by.
     /// </summary>
-    [SerializeField] private float                              speedCoef =                             1;
+    [SerializeField] private float                              speedCoef                               = 1;
 
     /// <summary>
     /// Initial speed of the player movements when starting moving.
     /// </summary>
-    [SerializeField] private float                              initialSpeed =                          1;
+    [SerializeField] private float                              initialSpeed                            = 1;
 
     /// <summary>
     /// Time it take for the player when starting moving to reach his maximum speed.
     /// </summary>
-    [SerializeField] private float                              speedIncreaseDuration =                 .5f;
+    [SerializeField] private float                              speedIncreaseDuration                   = .5f;
 
 
     /// <summary>
     /// Y velocity added to the player when performing a standard jumping.
     /// </summary>
-    [SerializeField] private float                              jumpForce =                             10;
+    [SerializeField] private float                              jumpForce                               = 10;
 
     /// <summary>
     /// Y velocity added the player after a standard jump
     /// while jumping & holding the jump button.
     /// </summary>
-    [SerializeField] private float                              jumpForceInDuration =                   .25f;
+    [SerializeField] private float                              jumpForceInDuration                     = .25f;
 
     /// <summary>
     /// Maximum duration of a standard jump.
     /// </summary>
-    [SerializeField] private float                              jumpMaxDuration =                       1;
+    [SerializeField] private float                              jumpMaxDuration                         = 1;
 
     /// <summary>
     /// Force added the player when performing a wall jump.
     /// </summary>
-    [SerializeField] private Vector2                            wallJumpForce =                         new Vector2(-2, 1);
+    [SerializeField] private Vector2                            wallJumpForce                           = new Vector2(-2, 1);
 
     /// <summary>
     /// Y velocity added the player after a wall jump
     /// while jumping & holding the jump button.
     /// </summary>
-    [SerializeField] private float                              wallJumpForceInDuration =               .25f;
+    [SerializeField] private float                              wallJumpForceInDuration                 = .25f;
 
     /// <summary>
     /// Maximum duration of a wall jump.
     /// </summary>
-    [SerializeField] private float                              wallJumpMaxDuration =                   .5f;
+    [SerializeField] private float                              wallJumpMaxDuration                     = .5f;
 
     /// <summary>
     /// Stacked velocity when against a wall before moving, to make the character sticky.
     /// </summary>
-    [SerializeField] private float                              chargedVelocity =                       0;
+    [SerializeField] private float                              chargedVelocity                         = 0;
     #endregion
 
     #region Inputs
     /// <summary>
     /// Input name for the horizontal axis. Used to move the character on the X axis.
     /// </summary>
-    public string                                               HorizontalAxis =                        "Horizontal";
+    public string                                               HorizontalAxis                          = "Horizontal";
 
     /// <summary>
     /// Input name for the button used to perform a jump.
     /// </summary>
-    public string                                               JumpButton =                            "Jump";
+    public string                                               JumpButton                              = "Jump";
     #endregion
 
     #region Help & Memory
@@ -626,8 +631,6 @@ public class PlayerController : MonoBehaviour
         {
             float _xForce = (_newPosition.x - transform.position.x) / (Time.fixedDeltaTime);
 
-            //if (Mathf.Sign(_xMovement) != Mathf.Sign(_xForce)) _xForce *= 1.5f;
-
             // If against a wall, create a sticky behaviour
             if (againstWall != AgainstWall.None)
             {
@@ -726,7 +729,7 @@ public class PlayerController : MonoBehaviour
     private void MoveOnRaycast(RaycastHit2D _hit)
     {
         // Set the player position if needed
-        if (_hit.distance > 0)
+        if (_hit.distance > 0.05f)
         {
             float _xColliderEdge = _hit.collider.bounds.center.x - (_hit.collider.bounds.extents.x * isFacingRight.Sign());
 
@@ -827,13 +830,11 @@ public class PlayerController : MonoBehaviour
         // Adds initial force to jump
         rigidbody.velocity = new Vector2(rigidbody.velocity.x + (wallJumpForce.x * (againstWall == AgainstWall.Left ? -1 : 1)), (rigidbody.velocity.y * .25f) + wallJumpForce.y);
 
-        //StartCoroutine(StopMove(.2f));
-
         // Update animator state
         SetAnim(AnimationState.Jump);
 
         // Stop the player from moving for a very short time
-        StartCoroutine(StopMove(.05f));
+        StartCoroutine(StopMove(STOP_MOVE_TIME_AFTER_WALL_JUMP));
 
         yield return null;
 
