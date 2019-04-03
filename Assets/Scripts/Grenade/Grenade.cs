@@ -46,22 +46,33 @@ public class Grenade : MonoBehaviour
     /// <summary>
     /// Animator of the grenade, to play different animations like explosion, blink and others.
     /// </summary>
-    [SerializeField] protected Animator                     animator =                      null;
+    [SerializeField] protected Animator                     animator                        = null;
 
     /// <summary>
     /// 2D Rigidbody of the grenade, used to infuse velocity in it.
     /// </summary>
-    [SerializeField] protected new Rigidbody2D              rigidbody2D =                   null;
+    [SerializeField] protected new Collider2D               collider                        = null;
+
+    /// <summary>
+    /// 2D Rigidbody of the grenade, used to infuse velocity in it.
+    /// </summary>
+    [SerializeField] protected new Rigidbody2D              rigidbody2D                     = null;
+
+
+    /// <summary>
+    /// Total duration of the grenade explosion, in seconds.
+    /// </summary>
+    [SerializeField] protected float                        explosionDuration              = .9f;
 
     /// <summary>
     /// Radius of the circle from the center of the explosion, where it should deal absolutly incredible explosive damages.
     /// </summary>
-    [SerializeField] protected float                        coreExplosionRadius =           .1f;
+    [SerializeField] protected float                        coreExplosionRadius             = .1f;
 
     /// <summary>
     /// Radius of the circle from the center of the explosion, where the explosion should just destroy things.
     /// </summary>
-    [SerializeField] protected float                        mainExplosionRadius =           2.5f;
+    [SerializeField] protected float                        mainExplosionRadius             = 2.5f;
     #endregion
 
     #region Methods
@@ -72,6 +83,10 @@ public class Grenade : MonoBehaviour
     /// </summary>
     private void Explode()
     {
+        // Disable collider
+        collider.enabled = false;
+
+        // Active the explosion animation
         animator.SetTrigger("Explosion");
     }
 

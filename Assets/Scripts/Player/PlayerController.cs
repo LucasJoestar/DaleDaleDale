@@ -61,6 +61,8 @@ public class PlayerController : MonoBehaviour
      *  [CONTROLLER]
      *  
      *      • Polish the thing ! In need to adjust air speed increase => line 641
+     *      
+     *      • When getting of ground while walking => get slow down ; got to increase speed here
      *  
      *  [ACTIONS]
      *  
@@ -472,6 +474,16 @@ public class PlayerController : MonoBehaviour
     /// Input name for the button used to perform a jump.
     /// </summary>
     public string                                               JumpButton                              = "Jump";
+
+    /// <summary>
+    /// Input name for the button letting use a grenade.
+    /// </summary>
+    public string                                               GrenadeButton                           = "Grenade";
+
+    /// <summary>
+    /// Input name for the button allowing to perform an action with the bat.
+    /// </summary>
+    public string                                               BatButton                               = "Bat";
     #endregion
 
     #region Help & Memory
@@ -568,8 +580,29 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     private void CheckInputs()
     {
+        // If charging an action, cannot perform another one
+        if (chargingAction != ChargingAction.None) return;
+
         // If pressing jump button, let's jump
-        if (Input.GetButtonDown(JumpButton)) Jump();
+        if (Input.GetButtonDown(JumpButton))
+        {
+            Jump();
+            return;
+        }
+
+        // If pressing grenade button, start preparing a grenade to throw
+        if (Input.GetButtonDown(GrenadeButton))
+        {
+            StartCoroutine(PrepareGrenade());
+            return;
+        }
+
+        // If pressing bat button, go charge a powerful strike
+        if (Input.GetButtonDown(BatButton))
+        {
+            StartCoroutine(PrepareStrike());
+            return;
+        }
     }
 
     /// <summary>
@@ -855,21 +888,30 @@ public class PlayerController : MonoBehaviour
 
     #region Actions & Attacks
     /// <summary>
-    /// Make the character prepare a strike with his bat. It's gonna rock.
+    /// Make the character prepare a strike with his bat. It's gonna rock, baby.
     /// </summary>
     /// <returns>IEnumerator, baby.</returns>
-    public IEnumerator Strike()
+    private IEnumerator PrepareStrike()
     {
         yield break;
     }
 
     /// <summary>
-    /// Make the character prepare a grenade throw.
+    /// Make the character prepare a grenade to launch.
     /// </summary>
     /// <returns>IEnumerator, baby.</returns>
-    public IEnumerator ThrowGrenade()
+    private IEnumerator PrepareGrenade()
     {
+        LaunchGrenade();
         yield break;
+    }
+
+    /// <summary>
+    /// Launch a grenade in the aiming direction. Explosion in coming.
+    /// </summary>
+    public void LaunchGrenade()
+    {
+
     }
     #endregion
 
