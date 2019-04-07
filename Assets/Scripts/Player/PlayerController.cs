@@ -229,6 +229,14 @@ public class PlayerController : MonoBehaviour
     private const float                                         STOP_MOVE_TIME_AFTER_WALL_JUMP          = .05f;
     #endregion
 
+    #region Prefabs
+    /// <summary>
+    /// Prefab of the classic grenade.
+    /// Use this to instantiate one.
+    /// </summary>
+    [SerializeField] private Grenade classicGrenadePrefab = null;
+    #endregion
+
     #region Components & References
     /// <summary>
     /// Animator of the player, used to play all its animations, like running, dying, etc...
@@ -462,6 +470,13 @@ public class PlayerController : MonoBehaviour
     /// Stacked velocity when against a wall before moving, to make the character sticky.
     /// </summary>
     [SerializeField] private float                              chargedVelocity                         = 0;
+
+
+    /// <summary>
+    /// Direction the player is aiming to.
+    /// When performing an action (launch a grenade, strike with the bat...), in will be executed in this direction.
+    /// </summary>
+    [SerializeField] private Vector2                            aimDirection                            = Vector2.right;
     #endregion
 
     #region Inputs
@@ -478,12 +493,12 @@ public class PlayerController : MonoBehaviour
     /// <summary>
     /// Input name for the button letting use a grenade.
     /// </summary>
-    public string                                               GrenadeButton                           = "Grenade";
+    public string                                               GrenadeButton                           = "Fire1";
 
     /// <summary>
     /// Input name for the button allowing to perform an action with the bat.
     /// </summary>
-    public string                                               BatButton                               = "Bat";
+    public string                                               BatButton                               = "Fire2";
     #endregion
 
     #region Help & Memory
@@ -802,6 +817,7 @@ public class PlayerController : MonoBehaviour
     {
         isFacingRight = !isFacingRight;
         transform.Rotate(Vector3.up, 180);
+        aimDirection.x *= -1;
     }
 
     /// <summary>
@@ -911,7 +927,7 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     public void LaunchGrenade()
     {
-
+        Instantiate(classicGrenadePrefab, transform.position + (Vector3)aimDirection, Quaternion.Euler(aimDirection)).Throw(aimDirection * 25);
     }
     #endregion
 
@@ -1074,6 +1090,9 @@ public class PlayerController : MonoBehaviour
                 Gizmos.DrawSphere(new Vector2(transform.position.x + ColliderCenter.x, transform.position.y + ColliderCenter.y - ColliderExtents.y), .1f);
             }
         }
+
+        // Draw an cube in the aiming direction
+        Gizmos.DrawCube(transform.position + (Vector3)(aimDirection * 1.2f), new Vector3(.3f, .3f, .3f));
     }
 
     // Use this for initialization
