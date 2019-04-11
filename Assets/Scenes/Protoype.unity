@@ -4431,13 +4431,13 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3279581577982126475, guid: 6634444f172306949a6e71de6840061b,
         type: 3}
-      propertyPath: GrenadeButton
-      value: Fire1
+      propertyPath: AimHorizontalAxis
+      value: Aim Horizontal
       objectReference: {fileID: 0}
     - target: {fileID: 3279581577982126475, guid: 6634444f172306949a6e71de6840061b,
         type: 3}
-      propertyPath: BatButton
-      value: Fire2
+      propertyPath: AimVerticalAxis
+      value: Aim Vertical
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6634444f172306949a6e71de6840061b, type: 3}

@@ -90,7 +90,7 @@ GameObject:
   - component: {fileID: 3279581577982126472}
   - component: {fileID: 3279581577982126473}
   - component: {fileID: 3279581577982126478}
-  m_Layer: 5
+  m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -154,10 +154,15 @@ MonoBehaviour:
   wallJumpMaxDuration: 0.5
   chargedVelocity: 0
   aimDirection: {x: 1, y: 0}
+  launchForce: 10
+  maxLaunchForce: 50
+  initialLaunchForce: 10
   HorizontalAxis: Horizontal
+  AimHorizontalAxis: Horizontal
+  AimVerticalAxis: Vertical
   JumpButton: Jump
-  GrenadeButton: Grenade
-  BatButton: Bat
+  GrenadeButton: Fire1
+  BatButton: Fire2
 --- !u!95 &3279581577982126472
 Animator:
   serializedVersion: 3

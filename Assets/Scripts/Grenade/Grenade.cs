@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -92,6 +93,8 @@ public class Grenade : MonoBehaviour
     [SerializeField] protected float                        explosionRadius                 = 0;
     #endregion
 
+    Vector3 velocity;
+
     #region Methods
 
     #region Original Methods
@@ -105,6 +108,9 @@ public class Grenade : MonoBehaviour
 
         lifeTime = initialLifeTime;
         StartCoroutine(CountDown());
+
+        // TESTS
+        velocity = _velocity;
     }
 
     /// <summary>
@@ -173,6 +179,11 @@ public class Grenade : MonoBehaviour
         #endif
     }
 
+    // Sent when an incoming collider makes contact with this object's collider (2D physics only).
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+    }
+
     // Implement OnDrawGizmos if you want to draw gizmos that are also pickable and always drawn
     private void OnDrawGizmos()
     {
@@ -190,7 +201,7 @@ public class Grenade : MonoBehaviour
 	// Update is called once per frame
 	private void Update()
     {
-        
+        //rigidbody2D.velocity = velocity;
 	}
 	#endregion
 

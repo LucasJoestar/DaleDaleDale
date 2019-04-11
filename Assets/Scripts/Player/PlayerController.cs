@@ -227,6 +227,13 @@ public class PlayerController : MonoBehaviour
     /// Time during which the player cannot move after performing a wall jump.
     /// </summary>
     private const float                                         STOP_MOVE_TIME_AFTER_WALL_JUMP          = .05f;
+
+    /// <summary>
+    /// Time it takes after starting preparing an action to completly stop the player from moving.
+    /// So, when starting preparing an action, the player still can move during a time amount
+    /// equal to this value.
+    /// </summary>
+    private const float                                         PREPARE_ACTION_STOP_MOVE_TIME           = .1f;
     #endregion
 
     #region Prefabs
@@ -477,6 +484,21 @@ public class PlayerController : MonoBehaviour
     /// When performing an action (launch a grenade, strike with the bat...), in will be executed in this direction.
     /// </summary>
     [SerializeField] private Vector2                            aimDirection                            = Vector2.right;
+
+    /// <summary>
+    /// Force used to launch a grenade (current value).
+    /// </summary>
+    [SerializeField] private float                              launchForce                             = 10;
+
+    /// <summary>
+    /// Maximum value of the force used to launch a grenade.
+    /// </summary>
+    [SerializeField] private float                              maxLaunchForce                          = 50;
+
+    /// <summary>
+    /// Initial value of the force used to launch a grenade, when just starting preparing one.
+    /// </summary>
+    [SerializeField] private float                              initialLaunchForce                      = 10;
     #endregion
 
     #region Inputs
@@ -484,6 +506,16 @@ public class PlayerController : MonoBehaviour
     /// Input name for the horizontal axis. Used to move the character on the X axis.
     /// </summary>
     public string                                               HorizontalAxis                          = "Horizontal";
+
+    /// <summary>
+    /// Input name for the horizontal axis used to aim.
+    /// </summary>
+    public string                                               AimHorizontalAxis                       = "Aim Horizontal";
+
+    /// <summary>
+    /// Input name for the vertical axis used to aim.
+    /// </summary>
+    public string                                               AimVerticalAxis                         = "Aim Vertical";
 
     /// <summary>
     /// Input name for the button used to perform a jump.
@@ -649,6 +681,21 @@ public class PlayerController : MonoBehaviour
             if (rigidbody.velocity.x != 0) rigidbody.velocity = new Vector2(0, rigidbody.velocity.y);
         }
     }
+
+    /// <summary>
+    /// Checks the player aiming.
+    /// </summary>
+    private void CheckAim()
+    {
+        // First, let's set the player aiming point ; first, get aiming movement
+        float _aimHorizontal = Input.GetAxis(AimHorizontalAxis);
+        float _aimVertical = Input.GetAxis(AimVerticalAxis);
+
+        Vector2 _aimDirection = new Vector2(_aimHorizontal, _aimVertical).normalized;
+        if (_aimDirection == Vector2.zero) _aimDirection = Vector2.right * isFacingRight.Sign();
+        else if ((Mathf.Sign(aimDirection.x) != isFacingRight.Sign()) && (againstWall == AgainstWall.None)) Flip();
+        aimDirection = _aimDirection;
+    }
     #endregion
 
     #region Movements
@@ -689,7 +736,7 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
-            Debug.Log("Velocity X => " + rigidbody.velocity.x + " | X Force => " + _xForce);
+            //Debug.Log("Velocity X => " + rigidbody.velocity.x + " | X Force => " + _xForce);
 
             if ((_xMovement < 0))
             {
@@ -817,7 +864,6 @@ public class PlayerController : MonoBehaviour
     {
         isFacingRight = !isFacingRight;
         transform.Rotate(Vector3.up, 180);
-        aimDirection.x *= -1;
     }
 
     /// <summary>
@@ -859,9 +905,8 @@ public class PlayerController : MonoBehaviour
         {
             rigidbody.velocity = new Vector2(rigidbody.velocity.x, rigidbody.velocity.y + jumpForceInDuration);
 
-            yield return null;
-
-            _timer += Time.deltaTime;
+            yield return new WaitForFixedUpdate();
+            _timer += Time.fixedDeltaTime;
         }
 
         yield break;
@@ -893,16 +938,15 @@ public class PlayerController : MonoBehaviour
         {
             rigidbody.velocity = new Vector2(rigidbody.velocity.x, rigidbody.velocity.y + wallJumpForceInDuration);
 
-            yield return null;
-
-            _timer += Time.deltaTime;
+            yield return new WaitForFixedUpdate();
+            _timer += Time.fixedDeltaTime;
         }
 
         yield break;
     }
     #endregion
 
-    #region Actions & Attacks
+    #region Actions
     /// <summary>
     /// Make the character prepare a strike with his bat. It's gonna rock, baby.
     /// </summary>
@@ -918,7 +962,25 @@ public class PlayerController : MonoBehaviour
     /// <returns>IEnumerator, baby.</returns>
     private IEnumerator PrepareGrenade()
     {
+        float _stopMoveTimer = PREPARE_ACTION_STOP_MOVE_TIME;
+
+        while (!Input.GetButtonUp(GrenadeButton))
+        {
+            yield return null;
+            if (launchForce < maxLaunchForce) launchForce += Time.deltaTime * 10;
+
+            if (_stopMoveTimer > 0)
+            {
+                _stopMoveTimer -= Time.deltaTime;
+                if (_stopMoveTimer <= 0) CanMove = false;
+            }
+        }
+
         LaunchGrenade();
+
+        CanMove = true;
+        launchForce = initialLaunchForce;
+
         yield break;
     }
 
@@ -927,7 +989,7 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     public void LaunchGrenade()
     {
-        Instantiate(classicGrenadePrefab, transform.position + (Vector3)aimDirection, Quaternion.Euler(aimDirection)).Throw(aimDirection * 25);
+        Instantiate(classicGrenadePrefab, transform.position + ((Vector3)aimDirection * 1.25f), Quaternion.Euler(aimDirection)).Throw(aimDirection * launchForce);
     }
     #endregion
 
@@ -1108,6 +1170,9 @@ public class PlayerController : MonoBehaviour
     {
         // Update various states of the player
         UpdateState();
+
+        // Check player aim
+        CheckAim();
 
         // Check player inputs
         CheckInputs();
